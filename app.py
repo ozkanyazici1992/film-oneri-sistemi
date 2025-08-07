@@ -17,8 +17,8 @@ pd.set_option('display.max_rows', None)
 pd.options.display.float_format = '{:.2f}'.format
 
 # Google Drive dosya ID ve kaydedilecek dosya adı
-FILE_ID = "1tFwLWL3AFcHb86T3EyKXoyk5_rrUZjtd"
-FILE_NAME = "movies_imdb.csv"
+FILE_ID = "10jh3aGXmvKjDC1CHoq25vbHWk8JukWJO"
+FILE_NAME = "movies_imdb.rar"
 
 
 def download_data():
@@ -209,3 +209,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
