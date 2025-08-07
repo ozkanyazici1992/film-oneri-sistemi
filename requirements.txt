@@ -4,3 +4,4 @@ numpy
 scikit-learn
 unicodedata2
 gdown
+rarfile==4.1
