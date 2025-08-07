@@ -1,0 +1,6 @@
+streamlit
+pandas
+numpy
+scikit-learn
+unicodedata2
+gdown
