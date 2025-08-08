@@ -171,10 +171,10 @@ def main():
 
     menu = st.sidebar.selectbox(
         "🔍 Seçim senin, sinema tutkun!",
-        ["Filmle Yolculuk", "Kullanıcı Rotaları", "Zaman Makinesi", "Türle Dalgaya Kapıl"]
+        ["Film Tavsiye Edebilirim", "Kullanıcıya Göre Öneriler", "Yılın En İyileri", "Tür Kategorisinde En İyiler"]
     )
 
-    if menu == "Filmle Yolculuk":
+    if menu == "Film Tavsiye Edebilirim":
         film = st.text_input("🎬 İzlediğin ve unutamadığın o filmi yaz:")
         if film:
             recs = recommend_by_title(film, sim_df, n=5, watched=watched_movies, normalized_titles_dict=norm_dict)
@@ -187,7 +187,7 @@ def main():
             else:
                 st.warning("🔍 Öneri bulunamadı.")
 
-    elif menu == "Kullanıcıya Göre Tavsiyeler":
+    elif menu == "Kullanıcıya Göre Öneriler":
         top_users = df["USERID"].value_counts().head(10).index.tolist()
         uid = st.selectbox("En aktif kullanıcı ID'leri:", top_users)
         recs = recommend_by_user(uid, user_movie_matrix, sim_df)
@@ -199,7 +199,7 @@ def main():
         else:
             st.warning("🔍 Öneri bulunamadı.")
 
-    elif menu == "Zaman Makinesi":
+    elif menu == "Yılın En İyileri":
         year_input = st.text_input("📅 Bir yıl girin (örnek: 2015), o yılın en iyilerini keşfedelim:")
         if year_input:
             top_movies_by_year(df_filtered, year_input)
@@ -214,4 +214,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
