@@ -160,7 +160,7 @@ def recommend_by_genre(df, genre, n=5):
     return top.index.tolist()
 
 def main():
-    st.title("🎞️ Sinema Galaksisi - Film Öneri Sistemi")
+    st.title("🎞️ KodBlessYou - Film Öneri Sistemi")
 
     df, df_filtered, user_movie_matrix, sim_df, norm_dict = prepare_data()
     if sim_df.empty:
@@ -187,7 +187,7 @@ def main():
             else:
                 st.warning("🔍 Öneri bulunamadı.")
 
-    elif menu == "Kullanıcı Rotaları":
+    elif menu == "Kullanıcıya Göre Tavsiyeler":
         top_users = df["USERID"].value_counts().head(10).index.tolist()
         uid = st.selectbox("En aktif kullanıcı ID'leri:", top_users)
         recs = recommend_by_user(uid, user_movie_matrix, sim_df)
@@ -204,7 +204,7 @@ def main():
         if year_input:
             top_movies_by_year(df_filtered, year_input)
 
-    elif menu == "Türle Dalgaya Kapıl":
+    elif menu == "Tür Kategorisinde En İyiler":
         st.write("🎞️ Kullanabileceğiniz film türlerinden bazıları:")
         st.write(
             "Action | Comedy | Drama | Romance | Thriller | Sci-Fi | Horror | Adventure | Animation | Crime | Mystery | Fantasy | War | Western | Documentary | Musical | Family | Biography")
@@ -214,3 +214,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
