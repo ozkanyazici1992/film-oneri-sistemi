@@ -180,8 +180,21 @@ def main():
 
     elif menu == "Kullanıcıya Göre Öneriler":
         top_users = df["USERID"].value_counts().head(10).index.tolist()
-        uid = st.selectbox("En aktif kullanıcı ID'leri:", top_users)
-        recs = recommend_by_user(uid, user_movie_matrix, sim_df)
+        st.write("🔹 **Popüler Kullanıcı ID'leri:**")
+        st.write(", ".join(str(uid) for uid in top_users))
+        
+        input_uid = st.text_input("Kullanıcı ID'sini buraya yazabilirsiniz (popülerlerden seçmek için boş bırakın):")
+        
+        if input_uid.strip():
+            try:
+                user_id = int(input_uid.strip())
+            except ValueError:
+                st.error("❌ Geçersiz kullanıcı ID formatı. Lütfen sadece sayı girin.")
+                return
+        else:
+            user_id = st.selectbox("Popüler kullanıcılar arasından seçiniz:", top_users)
+        
+        recs = recommend_by_user(user_id, user_movie_matrix, sim_df)
         if recs:
             st.success("✅ Önerilen Filmler:")
             for i, film in enumerate(recs, 1):
