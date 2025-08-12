@@ -154,8 +154,8 @@ def recommend_by_genre(df, genre, n=5):
 def main():
     st.title("🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi")
 
-    # Sidebar: Veri indirme ve kullanıcı ID girişi
-    st.sidebar.header("⚙️ Ayarlar & Kullanıcı Girişi")
+    # Sidebar: Veri seti indirme ve menü
+    st.sidebar.header("⚙️ Ayarlar")
     if st.sidebar.button("📥 Veri Setini İndir"):
         download_data()
 
@@ -171,10 +171,7 @@ def main():
         ["Film Tavsiye Edebilirim", "Kullanıcıya Göre Öneriler", "Yılın En İyileri", "Tür Kategorisinde En İyiler"]
     )
 
-    user_id_input = None
-    if menu == "Kullanıcıya Göre Öneriler":
-        user_id_input = st.sidebar.text_input("Kullanıcı ID'sini giriniz:")
-
+    # Film önerisi
     if menu == "Film Tavsiye Edebilirim":
         film = st.text_input("🎬 İzlediğin ve unutamadığın o filmi yaz:")
         if film:
@@ -188,7 +185,10 @@ def main():
             else:
                 st.warning("🔍 Öneri bulunamadı.")
 
+    # Kullanıcıya göre öneri, ID ekran ortada
     elif menu == "Kullanıcıya Göre Öneriler":
+        st.markdown("<h5 style='text-align: center;'>Kullanıcı ID'sini giriniz:</h5>", unsafe_allow_html=True)
+        user_id_input = st.text_input("", key="user_id_input")
         if user_id_input and user_id_input.strip():
             try:
                 user_id = int(user_id_input.strip())
@@ -205,11 +205,13 @@ def main():
         else:
             st.info("Lütfen kullanıcı ID'si giriniz.")
 
+    # Yılın en iyileri
     elif menu == "Yılın En İyileri":
         year_input = st.text_input("📅 Bir yıl girin (örnek: 2015), o yılın en iyilerini keşfedelim:")
         if year_input:
             top_movies_by_year(df_filtered, year_input)
 
+    # Tür kategorisinde en iyiler
     elif menu == "Tür Kategorisinde En İyiler":
         st.write("🎞️ Kullanabileceğiniz film türlerinden bazıları:")
         st.write(
@@ -217,7 +219,6 @@ def main():
         genre_input = st.text_input("🎬 Film türü seç, sana en güzel önerileri getirelim:")
         if genre_input:
             recommend_by_genre(df_filtered, genre_input)
-
 
 if __name__ == "__main__":
     main()
