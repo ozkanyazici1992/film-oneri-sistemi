@@ -19,7 +19,6 @@ pd.options.display.float_format = '{:.2f}'.format
 FILE_ID = "1QF-RRX3vf1jxiLMbdJQEQTYygeHlupPE"
 FILE_NAME = "movies_imdb_2.csv"
 
-
 def download_data():
     if not os.path.exists(FILE_NAME):
         url = f"https://drive.google.com/uc?id={FILE_ID}"
@@ -27,17 +26,14 @@ def download_data():
     else:
         logging.info(f"{FILE_NAME} zaten mevcut, indirme atlandı.")
 
-
 def weighted_rating(r, v, M, C):
     denom = v + M
     if denom == 0:
         return 0
     return (v / denom) * r + (M / denom) * C
 
-
 def normalize_title(title):
     return ''.join(c for c in unicodedata.normalize('NFD', title) if unicodedata.category(c) != 'Mn').lower().strip()
-
 
 @st.cache_data(show_spinner=True)
 def prepare_data(vote_threshold=1000, M=5000):
@@ -92,17 +88,14 @@ def prepare_data(vote_threshold=1000, M=5000):
     normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
     return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict
 
-
 def find_best_match(input_title, normalized_titles_dict):
     normalized_input = normalize_title(input_title)
     close = difflib.get_close_matches(normalized_input, normalized_titles_dict.keys(), n=1)
     return normalized_titles_dict[close[0]] if close else None
 
-
 def suggest_alternatives(input_title, normalized_titles_dict):
     norm = normalize_title(input_title)
     return [normalized_titles_dict[t] for t in difflib.get_close_matches(norm, normalized_titles_dict.keys(), n=3)]
-
 
 def recommend_by_title(title, sim_df, n=5, watched=None, normalized_titles_dict=None):
     watched = watched or set()
@@ -116,7 +109,6 @@ def recommend_by_title(title, sim_df, n=5, watched=None, normalized_titles_dict=
     scores = sim_df[match].drop(labels=watched.union({match}), errors="ignore")
     return scores.sort_values(ascending=False).head(n).index.tolist()
 
-
 def recommend_by_user(user_id, user_matrix, sim_df, n=5):
     if user_id not in user_matrix.index:
         st.error(f"❌ Kullanıcı ID {user_id} bulunamadı.")
@@ -129,7 +121,6 @@ def recommend_by_user(user_id, user_matrix, sim_df, n=5):
     scores = sim_df[watched.index].dot(watched)
     scores = scores.drop(watched.index, errors='ignore')
     return scores.sort_values(ascending=False).head(n).index.tolist()
-
 
 def top_movies_by_year(df, year, n=5):
     try:
@@ -147,7 +138,6 @@ def top_movies_by_year(df, year, n=5):
         st.error("⚠️ Geçersiz yıl girdisi.")
         return []
 
-
 def recommend_by_genre(df, genre, n=5):
     genre = genre.strip().title()
     genre_movies = df[df["GENRES"].str.contains(genre, case=False, na=False)]
@@ -160,9 +150,23 @@ def recommend_by_genre(df, genre, n=5):
         st.write(f"{i}. {title} - IMDb Skoru: {score:.2f}")
     return top.index.tolist()
 
+def download_button():
+    if os.path.exists(FILE_NAME):
+        with open(FILE_NAME, "rb") as file:
+            st.download_button(
+                label="📥 Veri Setini İndir",
+                data=file,
+                file_name=FILE_NAME,
+                mime="text/csv"
+            )
+    else:
+        st.info("Veri seti henüz indirilmedi, sayfa yenilenince otomatik indirilir.")
 
 def main():
     st.title("🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi")
+
+    # Veri seti indirme butonu
+    download_button()
 
     df, df_filtered, user_movie_matrix, sim_df, norm_dict = prepare_data()
     if sim_df.empty:
@@ -220,7 +224,6 @@ def main():
         genre_input = st.text_input("🎬 Film türü seç, sana en güzel önerileri getirelim:")
         if genre_input:
             recommend_by_genre(df_filtered, genre_input)
-
 
 if __name__ == "__main__":
     main()
