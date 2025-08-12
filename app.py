@@ -190,7 +190,7 @@ def main():
                 st.warning("🔍 Öneri bulunamadı.")
 
     elif menu == "Kullanıcıya Göre Öneriler":
-        input_uid = st.text_input("Kullanıcı ID'sini giriniz:")
+        input_uid = st.text_input("")
 
         if input_uid.strip():
             try:
@@ -224,3 +224,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
