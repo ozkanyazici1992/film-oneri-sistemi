@@ -23,8 +23,9 @@ def download_data():
     if not os.path.exists(FILE_NAME):
         url = f"https://drive.google.com/uc?id={FILE_ID}"
         gdown.download(url, FILE_NAME, quiet=False)
+        st.success(f"{FILE_NAME} başarıyla indirildi!")
     else:
-        logging.info(f"{FILE_NAME} zaten mevcut, indirme atlandı.")
+        st.info(f"{FILE_NAME} zaten mevcut, indirme atlandı.")
 
 def weighted_rating(r, v, M, C):
     denom = v + M
@@ -150,23 +151,13 @@ def recommend_by_genre(df, genre, n=5):
         st.write(f"{i}. {title} - IMDb Skoru: {score:.2f}")
     return top.index.tolist()
 
-def download_button():
-    if os.path.exists(FILE_NAME):
-        with open(FILE_NAME, "rb") as file:
-            st.sidebar.download_button(
-                label="📥 Veri Setini İndir",
-                data=file,
-                file_name=FILE_NAME,
-                mime="text/csv"
-            )
-    else:
-        st.sidebar.info("Veri seti henüz indirilmedi, sayfa yenilenince otomatik indirilir.")
-
 def main():
     st.title("🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi")
 
-    # Yan menüde veri seti indirme butonu
-    download_button()
+    # Sidebar: Veri indirme ve kullanıcı ID girişi
+    st.sidebar.header("⚙️ Ayarlar & Kullanıcı Girişi")
+    if st.sidebar.button("📥 Veri Setini İndir"):
+        download_data()
 
     df, df_filtered, user_movie_matrix, sim_df, norm_dict = prepare_data()
     if sim_df.empty:
@@ -179,6 +170,10 @@ def main():
         "🔍 Seçim senin, sinema tutkun!",
         ["Film Tavsiye Edebilirim", "Kullanıcıya Göre Öneriler", "Yılın En İyileri", "Tür Kategorisinde En İyiler"]
     )
+
+    user_id_input = None
+    if menu == "Kullanıcıya Göre Öneriler":
+        user_id_input = st.sidebar.text_input("Kullanıcı ID'sini giriniz:")
 
     if menu == "Film Tavsiye Edebilirim":
         film = st.text_input("🎬 İzlediğin ve unutamadığın o filmi yaz:")
@@ -194,11 +189,9 @@ def main():
                 st.warning("🔍 Öneri bulunamadı.")
 
     elif menu == "Kullanıcıya Göre Öneriler":
-        input_uid = st.text_input("Kullanıcı ID'sini giriniz:")
-
-        if input_uid.strip():
+        if user_id_input and user_id_input.strip():
             try:
-                user_id = int(input_uid.strip())
+                user_id = int(user_id_input.strip())
                 recs = recommend_by_user(user_id, user_movie_matrix, sim_df)
                 if recs:
                     st.success("✅ Önerilen Filmler:")
@@ -224,6 +217,7 @@ def main():
         genre_input = st.text_input("🎬 Film türü seç, sana en güzel önerileri getirelim:")
         if genre_input:
             recommend_by_genre(df_filtered, genre_input)
+
 
 if __name__ == "__main__":
     main()
