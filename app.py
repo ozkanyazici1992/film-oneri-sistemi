@@ -1,12 +1,30 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
 import unicodedata
 import difflib
 import logging
 from sklearn.metrics.pairwise import cosine_similarity
-import streamlit as st
+import gdown
+import os
 
+# Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# Ayarlar
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+pd.options.display.float_format = '{:.2f}'.format
+
+FILE_ID = "1QF-RRX3vf1jxiLMbdJQEQTYygeHlupPE"
+FILE_NAME = "movies_imdb_2.csv"
+
+def download_data():
+    if not os.path.exists(FILE_NAME):
+        url = f"https://drive.google.com/uc?id={FILE_ID}"
+        gdown.download(url, FILE_NAME, quiet=False)
+    else:
+        logging.info(f"{FILE_NAME} zaten mevcut, indirme atlandı.")
 
 def weighted_rating(r, v, M, C):
     denom = v + M
@@ -15,62 +33,60 @@ def weighted_rating(r, v, M, C):
     return (v / denom) * r + (M / denom) * C
 
 def normalize_title(title):
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', title)
-        if unicodedata.category(c) != 'Mn'
-    ).lower().strip()
+    return ''.join(c for c in unicodedata.normalize('NFD', title) if unicodedata.category(c) != 'Mn').lower().strip()
 
 @st.cache_data(show_spinner=True)
-def load_raw_data(path="others/movies_imdb.csv"):
-    df = pd.read_csv(path)
-    return df
+def prepare_data(vote_threshold=1000, M=5000):
+    download_data()
+    df = pd.read_csv(FILE_NAME)
 
-@st.cache_data(show_spinner=True)
-def preprocess_data(df, vote_threshold=1000, M=2500):
     df[["TITLE", "YEAR"]] = df["TITLE"].str.extract(r"^(.*) \((\d{4})\)$")
     df["TIME"] = pd.to_datetime(df["TIME"], dayfirst=True, errors='coerce')
     df.dropna(subset=["TITLE", "YEAR", "TIME", "RATING"], inplace=True)
     df["YEAR"] = df["YEAR"].astype(int)
     df["RATING_10"] = df["RATING"] * 2
+
     vote_counts = df.groupby("TITLE")["RATING"].count()
-    df["NUM_VOTES"] = df["TITLE"].map(vote_counts)
+    df["NUM_VOTES"] = df["TITLE"].map(vote_counts).astype('int32')
     C = df["RATING_10"].mean()
+
     movie_stats = df.groupby("TITLE").agg({
         "RATING_10": "mean",
         "NUM_VOTES": "max"
     }).reset_index()
+
     movie_stats["IMDB_SCORE"] = movie_stats.apply(
-        lambda x: weighted_rating(x["RATING_10"], x["NUM_VOTES"], M, C),
-        axis=1
+        lambda x: weighted_rating(x["RATING_10"], x["NUM_VOTES"], M, C), axis=1
     )
+
     df["IMDB_SCORE"] = df["TITLE"].map(movie_stats.set_index("TITLE")["IMDB_SCORE"])
+
     popular_titles = vote_counts[vote_counts >= vote_threshold].index
     df_filtered = df[df["TITLE"].isin(popular_titles)].copy()
-    return df, df_filtered
 
-@st.cache_data(show_spinner=True)
-def build_user_movie_matrix(df_filtered):
+    if "USERID" not in df_filtered.columns:
+        st.error("Veri setinde USERID sütunu bulunamadı.")
+        return df, df_filtered, pd.DataFrame(), pd.DataFrame(), {}
+
     user_movie_matrix = df_filtered.pivot_table(
         index="USERID",
         columns="TITLE",
         values="RATING_10",
         aggfunc='mean'
     ).fillna(0)
-    return user_movie_matrix
 
-@st.cache_data(show_spinner=True)
-def build_movie_similarity(user_movie_matrix):
+    if user_movie_matrix.shape[0] == 0 or user_movie_matrix.shape[1] == 0:
+        st.error("Öneri sistemi için yeterli kullanıcı-film verisi bulunamadı.")
+        return df, df_filtered, user_movie_matrix, pd.DataFrame(), {}
+
     movie_similarity_df = pd.DataFrame(
         cosine_similarity(user_movie_matrix.T),
         index=user_movie_matrix.columns,
         columns=user_movie_matrix.columns
     )
-    return movie_similarity_df
 
-@st.cache_data(show_spinner=True)
-def build_normalized_titles_dict(movie_similarity_df):
     normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
-    return normalized_titles_dict
+    return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict
 
 def find_best_match(input_title, normalized_titles_dict):
     normalized_input = normalize_title(input_title)
@@ -85,16 +101,22 @@ def recommend_by_title(title, sim_df, n=5, watched=None, normalized_titles_dict=
     watched = watched or set()
     match = find_best_match(title, normalized_titles_dict)
     if not match:
-        return None, suggest_alternatives(title, normalized_titles_dict)
+        st.error("❌ Film bulunamadı. Belki şunları kastettiniz:")
+        for alt in suggest_alternatives(title, normalized_titles_dict):
+            st.write(f"- {alt}")
+        return []
+    st.info(f"🎯 '{match}' filmine göre önerilenler:")
     scores = sim_df[match].drop(labels=watched.union({match}), errors="ignore")
-    return match, scores.sort_values(ascending=False).head(n).index.tolist()
+    return scores.sort_values(ascending=False).head(n).index.tolist()
 
 def recommend_by_user(user_id, user_matrix, sim_df, n=5):
     if user_id not in user_matrix.index:
-        return None
+        st.error(f"❌ Kullanıcı ID {user_id} bulunamadı.")
+        return []
     user_ratings = user_matrix.loc[user_id]
     watched = user_ratings[user_ratings > 0]
     if watched.empty:
+        st.warning("ℹ️ Kullanıcının izlediği film verisi yok.")
         return []
     scores = sim_df[watched.index].dot(watched)
     scores = scores.drop(watched.index, errors='ignore')
@@ -105,109 +127,81 @@ def top_movies_by_year(df, year, n=5):
         year = int(year)
         year_movies = df[df['YEAR'] == year]
         if year_movies.empty:
-            return None
+            st.error(f"⚠️ {year} yılına ait film bulunamadı.")
+            return []
         top = year_movies.groupby('TITLE')['IMDB_SCORE'].mean().sort_values(ascending=False).head(n)
-        return top
+        st.info(f"🗓️ {year} yılına ait en yüksek IMDb skoruna sahip filmler:")
+        for i, (title, score) in enumerate(top.items(), 1):
+            st.write(f"{i}. {title} - IMDb Skoru: {score:.2f}")
+        return top.index.tolist()
     except ValueError:
-        return None
+        st.error("⚠️ Geçersiz yıl girdisi.")
+        return []
 
 def recommend_by_genre(df, genre, n=5):
     genre = genre.strip().title()
     genre_movies = df[df["GENRES"].str.contains(genre, case=False, na=False)]
     if genre_movies.empty:
-        return None
+        st.error(f"⚠️ '{genre}' türünde film bulunamadı.")
+        return []
     top = genre_movies.groupby('TITLE')['IMDB_SCORE'].mean().sort_values(ascending=False).head(n)
-    return top
+    st.info(f"🎬 '{genre}' türünde en yüksek IMDb skoruna sahip filmler:")
+    for i, (title, score) in enumerate(top.items(), 1):
+        st.write(f"{i}. {title} - IMDb Skoru: {score:.2f}")
+    return top.index.tolist()
 
-def app():
-    st.title("🎞️ KodBlessYou Film Tavsiye Sistemi")
+def main():
+    st.title("🎞️ KodBlessYou - Film Öneri Sistemi")
 
-    # Yalnızca buton ile veri yükle ve işle, otomatik değil
-    if st.sidebar.button("Veriyi Yükle ve Hazırla"):
-        with st.spinner("Veriler hazırlanıyor..."):
-            df = load_raw_data()
-            df, df_filtered = preprocess_data(df)
-            user_movie_matrix = build_user_movie_matrix(df_filtered)
-            sim_df = build_movie_similarity(user_movie_matrix)
-            norm_dict = build_normalized_titles_dict(sim_df)
-            # Veri cache'lenir ve globalde tutmak için session_state kullanalım
-            st.session_state['df'] = df
-            st.session_state['df_filtered'] = df_filtered
-            st.session_state['user_movie_matrix'] = user_movie_matrix
-            st.session_state['sim_df'] = sim_df
-            st.session_state['norm_dict'] = norm_dict
-            st.success("Veriler hazırlandı! Menüden seçim yapabilirsiniz.")
-
-    if 'df' not in st.session_state:
-        st.info("Lütfen önce yukarıdaki butona basarak veriyi yükleyip hazırlayın.")
+    df, df_filtered, user_movie_matrix, sim_df, norm_dict = prepare_data()
+    if sim_df.empty:
+        st.error("Öneri sistemi için gerekli veriler eksik veya yetersiz.")
         return
 
-    df = st.session_state['df']
-    df_filtered = st.session_state['df_filtered']
-    user_movie_matrix = st.session_state['user_movie_matrix']
-    sim_df = st.session_state['sim_df']
-    norm_dict = st.session_state['norm_dict']
+    watched_movies = set()
 
-    menu = st.sidebar.selectbox("Seçim yapınız:", [
-        "Film adına göre öneri",
-        "Kullanıcı ID'ye göre öneri",
-        "Yıla göre en iyi filmler",
-        "Türüne göre film önerisi"
-    ])
+    menu = st.sidebar.selectbox(
+        "🔍 Seçim senin, sinema tutkun!",
+        ["Film Tavsiye Edebilirim", "Kullanıcıya Göre Öneriler", "Yılın En İyileri", "Tür Kategorisinde En İyiler"]
+    )
 
-    if menu == "Film adına göre öneri":
-        film = st.text_input("🎬 Film adı girin:")
+    if menu == "Film Tavsiye Edebilirim":
+        film = st.text_input("🎬 İzlediğin ve unutamadığın o filmi yaz:")
         if film:
-            match, recs = recommend_by_title(film, sim_df, n=5, normalized_titles_dict=norm_dict)
-            if match is None:
-                st.error("❌ Film bulunamadı. Belki şunları kastettiniz:")
-                for alt in recs:
-                    st.warning(f"- {alt}")
-            else:
-                st.success(f"🎯 '{match}' filmine göre önerilenler:")
-                for i, rec in enumerate(recs, 1):
-                    score = df[df["TITLE"] == rec]["IMDB_SCORE"].mean()
-                    st.write(f"{i}. {rec} — IMDb Skoru: {score:.2f}")
-
-    elif menu == "Kullanıcı ID'ye göre öneri":
-        top_users = df["USERID"].value_counts().head(10).index.tolist()
-        st.write(f"En aktif kullanıcı ID'leri: {', '.join(map(str, top_users))}")
-        user_id = st.number_input("Bir kullanıcı ID girin:", min_value=int(df["USERID"].min()), max_value=int(df["USERID"].max()), step=1)
-        if user_id:
-            recs = recommend_by_user(user_id, user_movie_matrix, sim_df)
-            if recs is None:
-                st.error(f"❌ Kullanıcı ID {user_id} bulunamadı.")
-            elif not recs:
-                st.info("ℹ️ Kullanıcının izlediği film verisi yok.")
-            else:
+            recs = recommend_by_title(film, sim_df, n=5, watched=watched_movies, normalized_titles_dict=norm_dict)
+            if recs:
                 st.success("✅ Önerilen Filmler:")
-                for i, rec in enumerate(recs, 1):
-                    score = df[df["TITLE"] == rec]["IMDB_SCORE"].mean()
-                    st.write(f"{i}. {rec} — IMDb Skoru: {score:.2f}")
-
-    elif menu == "Yıla göre en iyi filmler":
-        year = st.text_input("Bir yıl girin (ör: 2015):")
-        if year:
-            top = top_movies_by_year(df_filtered, year)
-            if top is None:
-                st.error(f"⚠️ {year} yılına ait film bulunamadı veya geçersiz yıl.")
+                for i, film in enumerate(recs, 1):
+                    score = df[df["TITLE"] == film]["IMDB_SCORE"].mean()
+                    st.write(f"{i}. {film} - IMDb Skoru: {score:.2f}")
+                    watched_movies.add(film)
             else:
-                st.success(f"🗓️ {year} yılına ait en yüksek IMDb skoruna sahip filmler:")
-                for i, (title, score) in enumerate(top.items(), 1):
-                    st.write(f"{i}. {title} — IMDb Skoru: {score:.2f}")
+                st.warning("🔍 Öneri bulunamadı.")
 
-    elif menu == "Türüne göre film önerisi":
+    elif menu == "Kullanıcıya Göre Öneriler":
+        top_users = df["USERID"].value_counts().head(10).index.tolist()
+        uid = st.selectbox("En aktif kullanıcı ID'leri:", top_users)
+        recs = recommend_by_user(uid, user_movie_matrix, sim_df)
+        if recs:
+            st.success("✅ Önerilen Filmler:")
+            for i, film in enumerate(recs, 1):
+                score = df[df["TITLE"] == film]["IMDB_SCORE"].mean()
+                st.write(f"{i}. {film} - IMDb Skoru: {score:.2f}")
+        else:
+            st.warning("🔍 Öneri bulunamadı.")
+
+    elif menu == "Yılın En İyileri":
+        year_input = st.text_input("📅 Bir yıl girin (örnek: 2015), o yılın en iyilerini keşfedelim:")
+        if year_input:
+            top_movies_by_year(df_filtered, year_input)
+
+    elif menu == "Tür Kategorisinde En İyiler":
         st.write("🎞️ Kullanabileceğiniz film türlerinden bazıları:")
-        st.write("Action, Comedy, Drama, Romance, Thriller, Biography, Horror, Adventure, Animation, Crime, Mystery, Fantasy, War, Western, Documentary, Musical")
-        genre = st.text_input("Film türü girin:")
-        if genre:
-            top = recommend_by_genre(df_filtered, genre)
-            if top is None:
-                st.error(f"⚠️ '{genre}' türünde film bulunamadı.")
-            else:
-                st.success(f"🎬 '{genre}' türünde en yüksek IMDb skoruna sahip filmler:")
-                for i, (title, score) in enumerate(top.items(), 1):
-                    st.write(f"{i}. {title} — IMDb Skoru: {score:.2f}")
+        st.write(
+            "Action | Comedy | Drama | Romance | Thriller | Sci-Fi | Horror | Adventure | Animation | Crime | Mystery | Fantasy | War | Western | Documentary | Musical | Family | Biography")
+        genre_input = st.text_input("🎬 Film türü seç, sana en güzel önerileri getirelim:")
+        if genre_input:
+            recommend_by_genre(df_filtered, genre_input)
 
 if __name__ == "__main__":
-    app()
+    main()
