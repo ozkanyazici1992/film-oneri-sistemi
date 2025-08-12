@@ -153,19 +153,19 @@ def recommend_by_genre(df, genre, n=5):
 def download_button():
     if os.path.exists(FILE_NAME):
         with open(FILE_NAME, "rb") as file:
-            st.download_button(
+            st.sidebar.download_button(
                 label="📥 Veri Setini İndir",
                 data=file,
                 file_name=FILE_NAME,
                 mime="text/csv"
             )
     else:
-        st.info("Veri seti henüz indirilmedi, sayfa yenilenince otomatik indirilir.")
+        st.sidebar.info("Veri seti henüz indirilmedi, sayfa yenilenince otomatik indirilir.")
 
 def main():
     st.title("🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi")
 
-    # Veri seti indirme butonu
+    # Yan menüde veri seti indirme butonu
     download_button()
 
     df, df_filtered, user_movie_matrix, sim_df, norm_dict = prepare_data()
