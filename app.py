@@ -151,7 +151,7 @@ def recommend_by_genre(df, genre, n=5):
     return top.index.tolist()
 
 def main():
-    st.title("🎞️ KodBlessYou - Film Öneri Sistemi")
+    st.title("🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi")
 
     df, df_filtered, user_movie_matrix, sim_df, norm_dict = prepare_data()
     if sim_df.empty:
@@ -212,3 +212,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
