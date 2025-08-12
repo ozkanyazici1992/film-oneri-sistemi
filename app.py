@@ -19,6 +19,67 @@ pd.options.display.float_format = '{:.2f}'.format
 FILE_ID = "1QF-RRX3vf1jxiLMbdJQEQTYygeHlupPE"
 FILE_NAME = "movies_imdb_2.csv"
 
+# --- CSS Styling ---
+st.markdown("""
+    <style>
+    /* Genel gövde arkaplan ve font */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    /* Başlıklar renk ve margin */
+    .title {
+        color: #4A90E2;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    /* Ortalanmış ve büyük input */
+    .centered-input > div > input {
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+        width: 50%;
+        font-size: 18px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1.5px solid #4A90E2;
+        transition: border-color 0.3s ease-in-out;
+    }
+    .centered-input > div > input:focus {
+        border-color: #357ABD;
+        outline: none;
+    }
+    /* Sidebar başlık */
+    .sidebar .sidebar-content h2 {
+        color: #4A90E2;
+        font-weight: 700;
+    }
+    /* Buton stil */
+    .stButton>button {
+        background-color: #4A90E2;
+        color: white;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 10px 0;
+        width: 100%;
+        transition: background-color 0.3s ease-in-out;
+    }
+    .stButton>button:hover {
+        background-color: #357ABD;
+    }
+    /* Aralıklar */
+    .section {
+        margin-top: 25px;
+        margin-bottom: 25px;
+    }
+    /* Bilgilendirme mesaj renkleri */
+    .stInfo, .stSuccess, .stWarning, .stError {
+        border-radius: 10px;
+        padding: 15px;
+        font-weight: 600;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 def download_data():
     if not os.path.exists(FILE_NAME):
         url = f"https://drive.google.com/uc?id={FILE_ID}"
@@ -152,7 +213,7 @@ def recommend_by_genre(df, genre, n=5):
     return top.index.tolist()
 
 def main():
-    st.title("🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi")
+    st.markdown("<h1 class='title'>🎞️ KodBlessYou - IMDB Film Tavsiye Sistemi</h1>", unsafe_allow_html=True)
 
     # Sidebar: Veri seti indirme ve menü
     st.sidebar.header("⚙️ Ayarlar")
@@ -171,9 +232,9 @@ def main():
         ["Film Tavsiye Edebilirim", "Kullanıcıya Göre Öneriler", "Yılın En İyileri", "Tür Kategorisinde En İyiler"]
     )
 
-    # Film önerisi
     if menu == "Film Tavsiye Edebilirim":
-        film = st.text_input("🎬 İzlediğin ve unutamadığın o filmi yaz:")
+        st.markdown("<div class='section'><h4 style='color:#4A90E2;'>🎬 İzlediğin ve unutamadığın o filmi yaz:</h4></div>", unsafe_allow_html=True)
+        film = st.text_input("", key="film_input")
         if film:
             recs = recommend_by_title(film, sim_df, n=5, watched=watched_movies, normalized_titles_dict=norm_dict)
             if recs:
@@ -185,9 +246,8 @@ def main():
             else:
                 st.warning("🔍 Öneri bulunamadı.")
 
-    # Kullanıcıya göre öneri, ID ekran ortada
     elif menu == "Kullanıcıya Göre Öneriler":
-        st.markdown("<h5 style='text-align: center;'>Kullanıcı ID'sini giriniz:</h5>", unsafe_allow_html=True)
+        st.markdown("<div class='section centered-input'><h4 style='text-align:center; color:#4A90E2;'>Kullanıcı ID'sini giriniz:</h4></div>", unsafe_allow_html=True)
         user_id_input = st.text_input("", key="user_id_input")
         if user_id_input and user_id_input.strip():
             try:
@@ -205,18 +265,18 @@ def main():
         else:
             st.info("Lütfen kullanıcı ID'si giriniz.")
 
-    # Yılın en iyileri
     elif menu == "Yılın En İyileri":
-        year_input = st.text_input("📅 Bir yıl girin (örnek: 2015), o yılın en iyilerini keşfedelim:")
+        st.markdown("<div class='section'><h4 style='color:#4A90E2;'>📅 Bir yıl girin (örnek: 2015), o yılın en iyilerini keşfedelim:</h4></div>", unsafe_allow_html=True)
+        year_input = st.text_input("", key="year_input")
         if year_input:
             top_movies_by_year(df_filtered, year_input)
 
-    # Tür kategorisinde en iyiler
     elif menu == "Tür Kategorisinde En İyiler":
-        st.write("🎞️ Kullanabileceğiniz film türlerinden bazıları:")
+        st.markdown("<div class='section'><h4 style='color:#4A90E2;'>🎞️ Kullanabileceğiniz film türlerinden bazıları:</h4></div>", unsafe_allow_html=True)
         st.write(
             "Action | Comedy | Drama | Romance | Thriller | Sci-Fi | Horror | Adventure | Animation | Crime | Mystery | Fantasy | War | Western | Documentary | Musical | Family | Biography")
-        genre_input = st.text_input("🎬 Film türü seç, sana en güzel önerileri getirelim:")
+        st.markdown("<div class='section'><h4 style='color:#4A90E2;'>🎬 Film türü seç, sana en güzel önerileri getirelim:</h4></div>", unsafe_allow_html=True)
+        genre_input = st.text_input("", key="genre_input")
         if genre_input:
             recommend_by_genre(df_filtered, genre_input)
 
