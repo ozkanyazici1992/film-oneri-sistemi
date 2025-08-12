@@ -179,29 +179,23 @@ def main():
                 st.warning("🔍 Öneri bulunamadı.")
 
     elif menu == "Kullanıcıya Göre Öneriler":
-        top_users = df["USERID"].value_counts().head(10).index.tolist()
-        st.write("🔹 **Popüler Kullanıcı ID'leri:**")
-        st.write(", ".join(str(uid) for uid in top_users))
-        
-        input_uid = st.text_input("Kullanıcı ID'sini buraya yazabilirsiniz (popülerlerden seçmek için boş bırakın):")
+        input_uid = st.text_input("Kullanıcı ID'sini giriniz:")
         
         if input_uid.strip():
             try:
                 user_id = int(input_uid.strip())
+                recs = recommend_by_user(user_id, user_movie_matrix, sim_df)
+                if recs:
+                    st.success("✅ Önerilen Filmler:")
+                    for i, film in enumerate(recs, 1):
+                        score = df[df["TITLE"] == film]["IMDB_SCORE"].mean()
+                        st.write(f"{i}. {film} - IMDb Skoru: {score:.2f}")
+                else:
+                    st.warning("🔍 Öneri bulunamadı.")
             except ValueError:
                 st.error("❌ Geçersiz kullanıcı ID formatı. Lütfen sadece sayı girin.")
-                return
         else:
-            user_id = st.selectbox("Popüler kullanıcılar arasından seçiniz:", top_users)
-        
-        recs = recommend_by_user(user_id, user_movie_matrix, sim_df)
-        if recs:
-            st.success("✅ Önerilen Filmler:")
-            for i, film in enumerate(recs, 1):
-                score = df[df["TITLE"] == film]["IMDB_SCORE"].mean()
-                st.write(f"{i}. {film} - IMDb Skoru: {score:.2f}")
-        else:
-            st.warning("🔍 Öneri bulunamadı.")
+            st.info("Lütfen kullanıcı ID'si giriniz.")
 
     elif menu == "Yılın En İyileri":
         year_input = st.text_input("📅 Bir yıl girin (örnek: 2015), o yılın en iyilerini keşfedelim:")
