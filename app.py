@@ -8,8 +8,8 @@ import gdown
 import os
 
 # Google Drive dosya bilgisi
-FILE_ID = "13UKG6Dox3hUVg4_VZUWoQuz2pn3jOVZe"
-PARQUET_FILE = "movies_imdb.parquet"
+FILE_ID = "1mdXIj3yZWd6cNV8hc5T2rTMjjAEbfgfL"
+PARQUET_FILE = "movies_imdb.csv"
 
 # CSV dosyasını indir ve Parquet'e dönüştür
 def download_and_convert():
@@ -188,3 +188,4 @@ elif choice == "Türe Göre":
                 st.write(f"{i}. {rec} - IMDb Skoru: {score:.2f}")
         else:
             st.warning("Bu türe ait film bulunamadı.")
+
