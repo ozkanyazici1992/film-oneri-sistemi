@@ -1,7 +1,10 @@
-streamlit
-pandas
-numpy
-scikit-learn
-unicodedata2
 gdown
 rarfile==4.1
+streamlit==1.48.1
+pandas==2.3.1
+pyarrow==21.0.0
+gdown==5.2.0
+scikit-learn==1.7.1
+numpy==2.3.2
+unicodedata2==16.0.0
+difflib
