@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 st.set_page_config(page_title="Film Öneri Sistemi", layout="wide")
 
 # Dosya bilgileri
-FILE_ID = "DRIVE_FILE_ID_HERE"
+FILE_ID = "13UKG6Dox3hUVg4_VZUWoQuz2pn3jOVZe"
 FILE_NAME = "movies_imdb.parquet"
 
 # Normalize fonksiyonu
@@ -112,3 +112,4 @@ if movie_input:
         st.subheader("Önerilen Filmler:")
         for r in recommendations:
             st.write(r)
+
