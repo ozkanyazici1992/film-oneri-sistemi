@@ -151,7 +151,7 @@ if choice == "Film Adına Göre":
 elif choice == "Kullanıcıya Göre":
     user_ids = df["USERID"].unique()
     user_input = st.number_input("Kullanıcı ID Girin:", min_value=int(user_ids.min()), max_value=int(user_ids.max()))
-    if user_input:
+    if user_input is not None:
         recommendations = recommend_by_user(user_input, user_movie_matrix, movie_similarity_df)
         if recommendations:
             st.success("🎯 Önerilen Filmler:")
@@ -163,7 +163,7 @@ elif choice == "Kullanıcıya Göre":
 
 elif choice == "Yıla Göre":
     year_input = st.number_input("Yıl Girin:", min_value=int(df['YEAR'].min()), max_value=int(df['YEAR'].max()))
-    if year_input:
+    if year_input is not None:
         top = top_movies_by_year(df_filtered, year_input)
         if top:
             st.success(f"{year_input} yılına ait en iyi filmler:")
