@@ -16,8 +16,8 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.options.display.float_format = '{:.2f}'.format
 
-FILE_ID = "1tFwLWL3AFcHb86T3EyKXoyk5_rrUZjtd"
-FILE_NAME = "movies_imdb.csv"
+FILE_ID = "13UKG6Dox3hUVg4_VZUWoQuz2pn3jOVZe"
+FILE_NAME = "movies_imdb.parquet"
 
 
 def download_data():
@@ -224,6 +224,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
