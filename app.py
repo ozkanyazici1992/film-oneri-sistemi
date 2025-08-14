@@ -162,7 +162,7 @@ def main():
     elif menu == "Tür Kategorisinde En İyiler":
         st.write("🎞️ Kullanabileceğiniz film türlerinden bazıları:")
         st.write(
-            "Action | Comedy | Drama | Romance | Thriller | Sci-Fi | Horror | Adventure | Animation | Crime | Mystery | Fantasy | War | Western | Documentary | Musical | Family | Biography")
+            "Action | Comedy | Drama | Romance | Thriller | Sci-Fi | Horror | Adventure | Animation | Crime | Mystery | Fantasy | War | Western | Musical")
         genre_input = st.text_input("🎬 Film türü seç, sana en güzel önerileri getirelim:")
         if genre_input:
             recommend_by_genre(df_filtered, genre_input)
