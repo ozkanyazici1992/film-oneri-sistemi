@@ -9,23 +9,27 @@ import os
 
 # Google Drive dosya bilgisi
 FILE_ID = "13UKG6Dox3hUVg4_VZUWoQuz2pn3jOVZe"
-FILE_NAME = "movies_imdb.parquet"
+PARQUET_FILE = "movies_imdb.parquet"
 
-# Veriyi indir ve Parquet olarak kaydet
-def download_data():
-    if not os.path.exists(FILE_NAME):
+# CSV dosyasını indir ve Parquet'e dönüştür
+def download_and_convert():
+    if not os.path.exists(PARQUET_FILE):
         url = f"https://drive.google.com/uc?id={FILE_ID}"
         csv_file = "movies_imdb.csv"
         gdown.download(url, csv_file, quiet=False)
-        df_csv = pd.read_csv(csv_file, encoding='latin1')  # encoding sorunu için latin1
-        df_csv.to_parquet(FILE_NAME, index=False)
+        
+        # Büyük CSV'yi chunks ile oku ve bozuk satırları atla
+        chunks = pd.read_csv(csv_file, encoding='latin1', chunksize=1_000_000, on_bad_lines='skip')
+        df_csv = pd.concat(chunks, ignore_index=True)
+        
+        df_csv.to_parquet(PARQUET_FILE, index=False)
         os.remove(csv_file)
 
-# Başlangıçta veri yükle ve önbelleğe al
+# Veri hazırlama ve önbelleğe alma
 @st.cache_data(show_spinner=True)
 def prepare_data(vote_threshold=1000, min_votes=2500):
-    download_data()
-    df = pd.read_parquet(FILE_NAME)
+    download_and_convert()
+    df = pd.read_parquet(PARQUET_FILE)
 
     # Başlık ve yılı ayır
     df[["TITLE", "YEAR"]] = df["TITLE"].str.extract(r"^(.*) \((\d{4})\)$")
@@ -151,7 +155,7 @@ if choice == "Film Adına Göre":
 elif choice == "Kullanıcıya Göre":
     user_ids = df["USERID"].unique()
     user_input = st.number_input("Kullanıcı ID Girin:", min_value=int(user_ids.min()), max_value=int(user_ids.max()))
-    if user_input is not None:
+    if user_input:
         recommendations = recommend_by_user(user_input, user_movie_matrix, movie_similarity_df)
         if recommendations:
             st.success("🎯 Önerilen Filmler:")
@@ -163,7 +167,7 @@ elif choice == "Kullanıcıya Göre":
 
 elif choice == "Yıla Göre":
     year_input = st.number_input("Yıl Girin:", min_value=int(df['YEAR'].min()), max_value=int(df['YEAR'].max()))
-    if year_input is not None:
+    if year_input:
         top = top_movies_by_year(df_filtered, year_input)
         if top:
             st.success(f"{year_input} yılına ait en iyi filmler:")
