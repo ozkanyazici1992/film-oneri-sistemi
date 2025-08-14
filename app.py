@@ -23,8 +23,8 @@ def normalize_title(title):
 
 @st.cache_data(show_spinner=True)
 def download_and_prepare_data(drive_url, local_path="movies_imdb.parquet", vote_threshold=1000, min_votes=2500):
-    # Drive'dan indir
-    gdown.download("13UKG6Dox3hUVg4_VZUWoQuz2pn3jOVZe","movies_imdb.parquet", quiet=False)
+    # Drive'dan parquet dosyasını indir
+    gdown.download(drive_url, local_path, quiet=False)
     
     # Parquet dosyasını oku
     df = pd.read_parquet(local_path)
@@ -131,8 +131,8 @@ def recommend_by_genre(df, genre, top_n=5):
 # ------------------- STREAMLIT APP -------------------
 st.title("🎬 KodBlessYou Movie Recommendations")
 
-# Drive URL'nizi buraya ekleyin
-drive_url = "https://drive.google.com/uc?id=YOUR_FILE_ID"
+# Drive URL'nizi buraya ekleyin (gdown uyumlu)
+drive_url = "https://drive.google.com/uc?id=13UKG6Dox3hUVg4_VZUWoQuz2pn3jOVZe"
 
 df, df_filtered, user_movie_matrix, similarity_df, norm_titles = download_and_prepare_data(drive_url)
 watched_movies = set()
