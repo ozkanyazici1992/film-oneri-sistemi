@@ -40,7 +40,7 @@ def normalize_title(title):
 
 
 @st.cache_data(show_spinner=True)
-def prepare_data(vote_threshold=1000, M=5000):
+def prepare_data(vote_threshold=5, M=5000):
     download_data()
     df = pd.read_csv(FILE_NAME)
 
@@ -170,3 +170,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
