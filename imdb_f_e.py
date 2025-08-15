@@ -8,17 +8,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 import gdown
 import os
 
-# Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 pd.options.display.float_format = '{:.2f}'.format
 
-# Google Drive dosya bilgisi
 DATA_URL = "https://drive.google.com/uc?id=1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
 LOCAL_FILE = "movies_imdb_2.csv"
 
-# --- Fonksiyonlar ---
 def weighted_rating(rating, votes, min_votes, mean_rating):
     denominator = votes + min_votes
     if denominator == 0:
@@ -32,11 +29,9 @@ def normalize_title(title):
     ).lower().strip()
 
 @st.cache_data(show_spinner=True)
-def download_and_prepare_data(file_url=DATA_URL, local_path=LOCAL_FILE, vote_threshold=1000, min_votes=2500):
-    # Dosya yoksa indir
+def download_and_prepare_data(file_url=DATA_URL, local_path=LOCAL_FILE, vote_threshold=50, min_votes=2500):
     if not os.path.exists(local_path):
         gdown.download(file_url, local_path, quiet=False)
-    
     df = pd.read_csv(local_path)
     df[["TITLE", "YEAR"]] = df["TITLE"].str.extract(r"^(.*) \((\d{4})\)$")
     df["TIME"] = pd.to_datetime(df["TIME"], dayfirst=True, errors='coerce')
@@ -82,7 +77,10 @@ def recommend_by_title(title, similarity_df, top_n=5, watched=None, normalized_t
     match = find_best_match(title, normalized_titles_dict)
     if not match:
         return [], suggest_alternatives(title, normalized_titles_dict)
+    
+    # Cosine similarity skorlarına küçük rastgele gürültü ekle
     scores = similarity_df[match].drop(labels=watched.union({match}), errors="ignore")
+    scores += np.random.uniform(0, 1e-6, size=len(scores))  # jitter
     return scores.sort_values(ascending=False).head(top_n).index.tolist(), []
 
 def recommend_by_user(user_id, user_matrix, similarity_df, top_n=5):
@@ -93,6 +91,7 @@ def recommend_by_user(user_id, user_matrix, similarity_df, top_n=5):
     if watched.empty:
         return []
     scores = similarity_df[watched.index].dot(watched)
+    scores += np.random.uniform(0, 1e-6, size=len(scores))  # jitter
     scores = scores.drop(watched.index, errors='ignore')
     return scores.sort_values(ascending=False).head(top_n).index.tolist()
 
@@ -118,7 +117,6 @@ df, df_filtered, user_movie_matrix, similarity_df, norm_titles = download_and_pr
 
 tabs = st.tabs(["By Title", "By User History", "Top Movies by Year", "By Genre"])
 
-# --- Tab 1: By Title ---
 with tabs[0]:
     st.header("🎬 Movie Recommendations by Title")
     movie_input = st.text_input("Enter a movie title:")
@@ -136,7 +134,6 @@ with tabs[0]:
         else:
             st.error("No recommendations found.")
 
-# --- Tab 2: By User History ---
 with tabs[1]:
     st.header("🧑‍💻 Recommendations by User History")
     user_id_input = st.number_input("Enter User ID:", min_value=1, step=1)
@@ -150,7 +147,6 @@ with tabs[1]:
         else:
             st.warning("No recommendations found or user not in dataset.")
 
-# --- Tab 3: Top Movies by Year ---
 with tabs[2]:
     st.header("📅 Top Movies by Year")
     year_input = st.number_input("Enter a year:", min_value=1900, max_value=2050, step=1)
@@ -164,7 +160,6 @@ with tabs[2]:
         else:
             st.warning("No movies found for this year.")
 
-# --- Tab 4: By Genre ---
 with tabs[3]:
     st.header("🎭 Recommendations by Genre")
     genre_input = st.text_input("Enter a genre (e.g., Comedy, Action):")
