@@ -108,7 +108,7 @@ def download_data_from_drive(file_id):
     try:
         # Google Drive URL'si
         url = f"https://drive.google.com/uc?id={file_id}"
-        output_file = "movies_imdb_2.csv"
+        output_file = "movies_imdb.csv"
         
         with st.spinner('📥 Veri seti indiriliyor... Bu işlem birkaç dakika sürebilir.'):
             # Dosya zaten varsa, tekrar indirme
@@ -298,7 +298,7 @@ def main():
     st.markdown('<p class="sub-header">1.5M film verisi ile profesyonel öneri deneyimi</p>', unsafe_allow_html=True)
     
     # Google Drive dosya ID'si
-    FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
+    FILE_ID = "1mdXIj3yZWd6cNV8hc5T2rTMjjAEbfgfL"
     
     # Veri setini indir ve hazırla
     if 'data_loaded' not in st.session_state:
@@ -583,3 +583,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
