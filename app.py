@@ -19,42 +19,85 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS stilleri
+# IMDb temalı CSS stilleri
 st.markdown("""
 <style>
     .main-header {
         font-size: 3rem;
         font-weight: bold;
         text-align: center;
-        background: linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1, #96CEB4);
+        background: linear-gradient(45deg, #F5C518, #000000, #F5C518);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     
     .sub-header {
         text-align: center;
-        color: #7D8590;
+        color: #F5C518;
         font-size: 1.2rem;
         margin-bottom: 2rem;
+        font-weight: 500;
     }
     
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
         padding: 1rem;
         border-radius: 10px;
-        color: white;
+        color: #F5C518;
         margin: 0.5rem;
+        border: 1px solid #F5C518;
     }
     
     .recommendation-card {
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
+        background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+        border: 2px solid #F5C518;
         border-radius: 10px;
         padding: 1rem;
         margin: 0.5rem 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: white;
+        box-shadow: 0 4px 8px rgba(245, 197, 24, 0.2);
+    }
+    
+    .stButton > button {
+        background: linear-gradient(45deg, #F5C518, #FFD700);
+        color: black;
+        border: none;
+        font-weight: bold;
+        border-radius: 25px;
+        padding: 0.5rem 2rem;
+        transition: all 0.3s;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(245, 197, 24, 0.4);
+    }
+    
+    .stSelectbox > div > div {
+        background-color: #1a1a1a;
+        color: white;
+        border: 1px solid #F5C518;
+    }
+    
+    .stTextInput > div > div > input {
+        background-color: #1a1a1a;
+        color: white;
+        border: 1px solid #F5C518;
+    }
+    
+    .sidebar .sidebar-content {
+        background-color: #000000;
+    }
+    
+    .imdb-title {
+        color: #F5C518;
+        font-weight: bold;
+        font-size: 1.3rem;
+        text-align: center;
+        margin: 1rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -227,35 +270,6 @@ def recommend_by_title(title, similarity_df, df, top_n=5, normalized_titles_dict
     
     return rec_data, match
 
-def recommend_by_user(user_id, user_matrix, similarity_df, df, top_n=5):
-    """Kullanıcı geçmişine göre öneri yap"""
-    if user_id not in user_matrix.index:
-        return None
-    
-    user_ratings = user_matrix.loc[user_id]
-    watched = user_ratings[user_ratings > 0]
-    
-    if watched.empty:
-        return []
-    
-    scores = similarity_df[watched.index].dot(watched)
-    scores = scores.drop(watched.index, errors='ignore')
-    recommendations = scores.sort_values(ascending=False).head(top_n)
-    
-    # Film bilgilerini ekle
-    rec_data = []
-    for movie, score in recommendations.items():
-        movie_info = df[df["TITLE"] == movie].iloc[0]
-        rec_data.append({
-            "Film": movie,
-            "Öneri Skoru": f"{score:.2f}",
-            "IMDb Skoru": f"{movie_info['IMDB_SCORE']:.2f}",
-            "Yıl": int(movie_info["YEAR"]),
-            "Türler": movie_info["GENRES"]
-        })
-    
-    return rec_data
-
 def get_top_movies_by_year(df, year, top_n=10):
     """Yıla göre en iyi filmleri getir"""
     year_movies = df[df['YEAR'] == year]
@@ -280,8 +294,8 @@ def get_top_movies_by_genre(df, genre, top_n=10):
 
 def main():
     # Ana başlık
-    st.markdown('<h1 class="main-header">🎬 Film Öneri Sistemi</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">1.5 M film verisi ile kişiselleştirilmiş öneriler</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🎬 IMDb Film Öneri Sistemi</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">1.5M film verisi ile profesyonel öneri deneyimi</p>', unsafe_allow_html=True)
     
     # Google Drive dosya ID'si
     FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
@@ -314,132 +328,98 @@ def main():
     movie_similarity_df = st.session_state.movie_similarity_df
     normalized_titles_dict = st.session_state.normalized_titles_dict
     
-    # Sidebar - İstatistikler
+    # Sidebar - İstatistikler (IMDb teması)
     with st.sidebar:
-        st.header("📊 Veri Seti İstatistikleri")
+        st.markdown('<div class="imdb-title">📊 Film Veritabanı İstatistikleri</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Toplam Film", f"{df['TITLE'].nunique():,}")
-            st.metric("Toplam Kullanıcı", f"{df['USERID'].nunique():,}")
+            st.metric("Toplam Film", f"{df['TITLE'].nunique():,}", delta="Film Sayısı")
+            st.metric("Toplam Kullanıcı", f"{df['USERID'].nunique():,}", delta="Aktif Kullanıcı")
         with col2:
-            st.metric("Toplam Değerlendirme", f"{len(df):,}")
-            st.metric("Ortalama IMDb Skoru", f"{df['IMDB_SCORE'].mean():.2f}")
+            st.metric("Toplam Değerlendirme", f"{len(df):,}", delta="Rating Sayısı")
+            st.metric("Ortalama IMDb Skoru", f"{df['IMDB_SCORE'].mean():.2f}", delta="⭐ Puan")
         
-        # Yıl dağılımı grafiği
-        st.subheader("📅 Yıllara Göre Film Sayısı")
+        # Yıl dağılımı grafiği (IMDb renkleri)
+        st.markdown('<div class="imdb-title">📅 Yıllara Göre Film Dağılımı</div>', unsafe_allow_html=True)
         year_counts = df.groupby('YEAR')['TITLE'].nunique().reset_index()
         fig = px.line(year_counts, x='YEAR', y='TITLE', 
-                     title='Yıllara Göre Film Sayısı')
-        fig.update_layout(height=300)
+                     title='Film Üretim Trendi',
+                     color_discrete_sequence=['#F5C518'])
+        fig.update_layout(
+            height=300,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font_color='white'
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     # Ana içerik
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "🎯 Film Bazlı Öneriler", 
-        "👤 Kullanıcı Bazlı Öneriler", 
         "📅 Yıla Göre En İyiler",
         "🎭 Türe Göre En İyiler",
         "🔍 Veri Keşfi"
     ])
     
     with tab1:
-        st.header("🎯 Film Bazlı Öneriler")
-        st.write("Sevdiğiniz bir filmi yazın, benzer filmleri önereceğiz!")
+        st.markdown('<div class="imdb-title">🎯 Film Bazlı Akıllı Öneriler</div>', unsafe_allow_html=True)
+        st.write("Sevdiğiniz bir filmi yazın, benzer yapımları size önereceğiz!")
         
         col1, col2 = st.columns([3, 1])
         with col1:
-            movie_input = st.text_input("Film Adı:", placeholder="Örnek: The Shawshank Redemption")
+            movie_input = st.text_input("🎬 Film Adı:", placeholder="Örnek: The Shawshank Redemption")
         with col2:
-            num_recommendations = st.selectbox("Öneri Sayısı:", [5, 10, 15, 20], index=0)
+            num_recommendations = st.selectbox("📊 Öneri Sayısı:", [5, 10, 15, 20], index=0)
         
-        if st.button("🎬 Öneri Al", type="primary"):
+        if st.button("🎭 Benzer Filmleri Öner", type="primary"):
             if movie_input:
                 recommendations, match_or_alternatives = recommend_by_title(
                     movie_input, movie_similarity_df, df, num_recommendations, normalized_titles_dict
                 )
                 
                 if recommendations is None:
-                    st.error("❌ Film bulunamadı. Şunları kastetmiş olabilir misiniz?")
+                    st.error("❌ Film bulunamadı. Bunları kastetmiş olabilir misiniz?")
                     for alt in match_or_alternatives:
-                        st.write(f"• {alt}")
+                        st.write(f"🎬 {alt}")
                 else:
-                    st.success(f"✅ '{match_or_alternatives}' filmine göre öneriler:")
+                    st.success(f"✅ '{match_or_alternatives}' filmine benzer yapımlar:")
                     
                     # Önerileri tablo olarak göster
                     rec_df = pd.DataFrame(recommendations)
                     st.dataframe(rec_df, use_container_width=True)
                     
-                    # Benzerlik skoru grafiği
+                    # Benzerlik skoru grafiği (IMDb teması)
                     fig = px.bar(rec_df, x='Film', y='Benzerlik Skoru', 
-                               title=f'{match_or_alternatives} - Benzerlik Skorları',
-                               color='IMDb Skoru', color_continuous_scale='viridis')
-                    fig.update_layout(xaxis_tickangle=-45)
+                               title=f'{match_or_alternatives} - Benzerlik Analizi',
+                               color='IMDb Skoru', color_continuous_scale='YlOrBr')
+                    fig.update_layout(
+                        xaxis_tickangle=-45,
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font_color='white'
+                    )
                     st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning("⚠️ Lütfen bir film adı girin.")
     
     with tab2:
-        st.header("👤 Kullanıcı Bazlı Öneriler")
-        st.write("Kullanıcı ID'sine göre kişiselleştirilmiş öneriler!")
-        
-        # En aktif kullanıcıları göster
-        top_users = df["USERID"].value_counts().head(20).index.tolist()
+        st.markdown('<div class="imdb-title">📅 Yıla Göre En İyi Filmler</div>', unsafe_allow_html=True)
         
         col1, col2 = st.columns([2, 1])
         with col1:
-            user_input = st.selectbox("Kullanıcı ID seçin:", [""] + top_users)
+            years = sorted(df['YEAR'].unique(), reverse=True)
+            selected_year = st.selectbox("📆 Yıl seçin:", years)
         with col2:
-            num_user_rec = st.selectbox("Öneri Sayısı:", [5, 10, 15, 20], index=1)
+            num_year_movies = st.selectbox("🏆 Kaç film gösterilsin:", [5, 10, 15, 20], index=1)
         
-        if st.button("👤 Kullanıcı Önerileri Al", type="primary"):
-            if user_input:
-                user_id = int(user_input)
-                recommendations = recommend_by_user(
-                    user_id, user_movie_matrix, movie_similarity_df, df, num_user_rec
-                )
-                
-                if recommendations is None:
-                    st.error("❌ Kullanıcı bulunamadı.")
-                elif not recommendations:
-                    st.warning("⚠️ Bu kullanıcı için izlenmiş film bulunamadı.")
-                else:
-                    st.success(f"✅ Kullanıcı {user_id} için öneriler:")
-                    
-                    # Kullanıcının izlediği filmler
-                    user_movies = df[df['USERID'] == user_id]['TITLE'].unique()
-                    st.write(f"**İzlediği film sayısı:** {len(user_movies)}")
-                    
-                    with st.expander("İzlediği filmlerden bazıları"):
-                        for movie in user_movies[:10]:
-                            st.write(f"• {movie}")
-                    
-                    # Önerileri göster
-                    rec_df = pd.DataFrame(recommendations)
-                    st.dataframe(rec_df, use_container_width=True)
-                    
-                    # Öneri skoru grafiği
-                    fig = px.bar(rec_df, x='Film', y='Öneri Skoru', 
-                               title=f'Kullanıcı {user_id} - Öneri Skorları',
-                               color='IMDb Skoru', color_continuous_scale='plasma')
-                    fig.update_layout(xaxis_tickangle=-45)
-                    st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("⚠️ Lütfen bir kullanıcı ID seçin.")
-    
-    with tab3:
-        st.header("📅 Yıla Göre En İyi Filmler")
-        
-        years = sorted(df['YEAR'].unique(), reverse=True)
-        selected_year = st.selectbox("Yıl seçin:", years)
-        
-        if st.button("📅 Yılın En İyilerini Göster", type="primary"):
-            top_movies = get_top_movies_by_year(df_filtered, selected_year)
+        if st.button("🏆 Yılın En İyilerini Göster", type="primary"):
+            top_movies = get_top_movies_by_year(df_filtered, selected_year, num_year_movies)
             
             if not top_movies:
                 st.error(f"❌ {selected_year} yılı için film bulunamadı.")
             else:
-                st.success(f"✅ {selected_year} yılının en iyi filmleri:")
+                st.success(f"✅ {selected_year} yılının en iyi {len(top_movies)} filmi:")
                 
                 # Tablo olarak göster
                 movies_df = pd.DataFrame(top_movies)
@@ -450,15 +430,20 @@ def main():
                 })
                 st.dataframe(movies_df, use_container_width=True)
                 
-                # Grafik
+                # Grafik (IMDb teması)
                 fig = px.bar(movies_df, x='Film', y='IMDb Skoru', 
-                           title=f'{selected_year} Yılının En İyi Filmleri',
-                           color='IMDb Skoru', color_continuous_scale='blues')
-                fig.update_layout(xaxis_tickangle=-45)
+                           title=f'{selected_year} - Yılın En İyi {len(top_movies)} Filmi',
+                           color='IMDb Skoru', color_continuous_scale='YlOrBr')
+                fig.update_layout(
+                    xaxis_tickangle=-45,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
                 st.plotly_chart(fig, use_container_width=True)
     
-    with tab4:
-        st.header("🎭 Türe Göre En İyi Filmler")
+    with tab3:
+        st.markdown('<div class="imdb-title">🎭 Türe Göre En İyi Filmler</div>', unsafe_allow_html=True)
         
         # Mevcut türleri al
         all_genres = set()
@@ -473,15 +458,19 @@ def main():
         
         genre_options = available_popular + other_genres
         
-        selected_genre = st.selectbox("Tür seçin:", genre_options)
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected_genre = st.selectbox("🎭 Tür seçin:", genre_options)
+        with col2:
+            num_genre_movies = st.selectbox("🎯 Kaç film gösterilsin:", [5, 10, 15, 20], index=1)
         
-        if st.button("🎭 Türün En İyilerini Göster", type="primary"):
-            top_movies = get_top_movies_by_genre(df_filtered, selected_genre)
+        if st.button("🎪 Türün En İyilerini Göster", type="primary"):
+            top_movies = get_top_movies_by_genre(df_filtered, selected_genre, num_genre_movies)
             
             if not top_movies:
                 st.error(f"❌ {selected_genre} türü için film bulunamadı.")
             else:
-                st.success(f"✅ {selected_genre} türünün en iyi filmleri:")
+                st.success(f"✅ {selected_genre} türünün en iyi {len(top_movies)} filmi:")
                 
                 # Tablo olarak göster
                 movies_df = pd.DataFrame(top_movies)
@@ -492,30 +481,35 @@ def main():
                 })
                 st.dataframe(movies_df, use_container_width=True)
                 
-                # Grafik
+                # Grafik (IMDb teması)
                 fig = px.scatter(movies_df, x='Yıl', y='IMDb Skoru', 
                                size='IMDb Skoru', hover_name='Film',
-                               title=f'{selected_genre} Türü - Yıl ve IMDb Skoru Dağılımı',
-                               color='IMDb Skoru', color_continuous_scale='reds')
+                               title=f'{selected_genre} Türü - Zaman İçinde Kalite Analizi',
+                               color='IMDb Skoru', color_continuous_scale='YlOrBr')
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font_color='white'
+                )
                 st.plotly_chart(fig, use_container_width=True)
     
-    with tab5:
-        st.header("🔍 Veri Keşfi ve Analiz")
+    with tab4:
+        st.markdown('<div class="imdb-title">🔍 Veri Keşfi ve Analiz</div>', unsafe_allow_html=True)
         
-        # Genel istatistikler
+        # Genel istatistikler (IMDb kartları)
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Toplam Film", f"{df['TITLE'].nunique():,}")
+            st.metric("🎬 Toplam Film", f"{df['TITLE'].nunique():,}", delta="Benzersiz Film")
         with col2:
-            st.metric("Toplam Değerlendirme", f"{len(df):,}")
+            st.metric("⭐ Toplam Rating", f"{len(df):,}", delta="Kullanıcı Puanı")
         with col3:
-            st.metric("Ortalama Rating", f"{df['RATING'].mean():.2f}")
+            st.metric("📊 Ortalama Puan", f"{df['RATING'].mean():.2f}/5", delta="Genel Ortalama")
         with col4:
-            st.metric("En Son Yıl", f"{df['YEAR'].max()}")
+            st.metric("📅 En Son Yıl", f"{df['YEAR'].max()}", delta="Güncel Veri")
         
         # Grafik seçenekleri
-        chart_type = st.selectbox("Grafik türü seçin:", [
+        chart_type = st.selectbox("📈 Analiz türü seçin:", [
             "En Çok Değerlendirilen Filmler",
             "Yıllara Göre Film Sayısı", 
             "En Popüler Türler",
@@ -527,13 +521,26 @@ def main():
             fig = px.bar(x=top_rated.values, y=top_rated.index, 
                         title='En Çok Değerlendirilen 20 Film',
                         labels={'x': 'Değerlendirme Sayısı', 'y': 'Film'},
-                        orientation='h')
+                        orientation='h',
+                        color=top_rated.values,
+                        color_continuous_scale='YlOrBr')
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig, use_container_width=True)
             
         elif chart_type == "Yıllara Göre Film Sayısı":
             year_counts = df.groupby('YEAR')['TITLE'].nunique().reset_index()
             fig = px.area(year_counts, x='YEAR', y='TITLE', 
-                         title='Yıllara Göre Film Sayısı Trend')
+                         title='Film Endüstrisi Büyüme Trendi',
+                         color_discrete_sequence=['#F5C518'])
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig, use_container_width=True)
             
         elif chart_type == "En Popüler Türler":
@@ -548,20 +555,31 @@ def main():
             genre_df = genre_df.sort_values('Sayı', ascending=False).head(15)
             
             fig = px.bar(genre_df, x='Sayı', y='Tür', 
-                        title='En Popüler 15 Film Türü',
-                        orientation='h')
+                        title='Film Türleri Popülerlik Sıralaması',
+                        orientation='h',
+                        color='Sayı',
+                        color_continuous_scale='YlOrBr')
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig, use_container_width=True)
             
         elif chart_type == "Rating Dağılımı":
             fig = px.histogram(df, x='RATING', nbins=50, 
-                             title='Rating Dağılımı (1-5 Skala)')
+                             title='Kullanıcı Puanları Dağılımı (1-5 Skala)',
+                             color_discrete_sequence=['#F5C518'])
+            fig.update_layout(
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                font_color='white'
+            )
             st.plotly_chart(fig, use_container_width=True)
         
         # Veri seti örneği
-        st.subheader("📋 Veri Seti Örneği")
+        st.subheader("📋 Örnek Veri Seti")
         st.dataframe(df.head(100), use_container_width=True)
 
 if __name__ == "__main__":
     main()
-
-
