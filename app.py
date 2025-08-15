@@ -94,7 +94,7 @@ def normalize_title(title):
     ).lower().strip()
 
 @st.cache_data(ttl=3600)
-def prepare_data(filepath, vote_threshold=100, min_votes=500):
+def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
     """Veri setini hazırla ve öneri sistemi için işle"""
     
     progress_bar = st.progress(0)
@@ -227,6 +227,35 @@ def recommend_by_title(title, similarity_df, df, top_n=5, normalized_titles_dict
     
     return rec_data, match
 
+def recommend_by_user(user_id, user_matrix, similarity_df, df, top_n=5):
+    """Kullanıcı geçmişine göre öneri yap"""
+    if user_id not in user_matrix.index:
+        return None
+    
+    user_ratings = user_matrix.loc[user_id]
+    watched = user_ratings[user_ratings > 0]
+    
+    if watched.empty:
+        return []
+    
+    scores = similarity_df[watched.index].dot(watched)
+    scores = scores.drop(watched.index, errors='ignore')
+    recommendations = scores.sort_values(ascending=False).head(top_n)
+    
+    # Film bilgilerini ekle
+    rec_data = []
+    for movie, score in recommendations.items():
+        movie_info = df[df["TITLE"] == movie].iloc[0]
+        rec_data.append({
+            "Film": movie,
+            "Öneri Skoru": f"{score:.2f}",
+            "IMDb Skoru": f"{movie_info['IMDB_SCORE']:.2f}",
+            "Yıl": int(movie_info["YEAR"]),
+            "Türler": movie_info["GENRES"]
+        })
+    
+    return rec_data
+
 def get_top_movies_by_year(df, year, top_n=10):
     """Yıla göre en iyi filmleri getir"""
     year_movies = df[df['YEAR'] == year]
@@ -252,7 +281,7 @@ def get_top_movies_by_genre(df, genre, top_n=10):
 def main():
     # Ana başlık
     st.markdown('<h1 class="main-header">🎬 Film Öneri Sistemi</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">1.5 M film verisi ile kişiselleştirilmiş öneriler</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">26M+ film verisi ile kişiselleştirilmiş öneriler</p>', unsafe_allow_html=True)
     
     # Google Drive dosya ID'si
     FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
@@ -301,13 +330,14 @@ def main():
         st.subheader("📅 Yıllara Göre Film Sayısı")
         year_counts = df.groupby('YEAR')['TITLE'].nunique().reset_index()
         fig = px.line(year_counts, x='YEAR', y='TITLE', 
-                      title='Yıllara Göre Film Sayısı')
+                     title='Yıllara Göre Film Sayısı')
         fig.update_layout(height=300)
         st.plotly_chart(fig, use_container_width=True)
     
     # Ana içerik
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🎯 Film Bazlı Öneriler",
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🎯 Film Bazlı Öneriler", 
+        "👤 Kullanıcı Bazlı Öneriler", 
         "📅 Yıla Göre En İyiler",
         "🎭 Türe Göre En İyiler",
         "🔍 Veri Keşfi"
@@ -342,88 +372,134 @@ def main():
                     
                     # Benzerlik skoru grafiği
                     fig = px.bar(rec_df, x='Film', y='Benzerlik Skoru', 
-                                 title=f'{match_or_alternatives} - Benzerlik Skorları',
-                                 color='IMDb Skoru', color_continuous_scale='viridis')
+                               title=f'{match_or_alternatives} - Benzerlik Skorları',
+                               color='IMDb Skoru', color_continuous_scale='viridis')
                     fig.update_layout(xaxis_tickangle=-45)
                     st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning("⚠️ Lütfen bir film adı girin.")
     
     with tab2:
-        st.header("📅 Yıla Göre En İyi Filmler")
+        st.header("👤 Kullanıcı Bazlı Öneriler")
+        st.write("Kullanıcı ID'sine göre kişiselleştirilmiş öneriler!")
         
-        # Yıl girişi için metin kutusu
-        selected_year_str = st.text_input("Yıl girin:", "2023", key='year_input_text')
+        # En aktif kullanıcıları göster
+        top_users = df["USERID"].value_counts().head(20).index.tolist()
         
-        # Girişi integer'a çevir, hata durumunu ele al
-        try:
-            selected_year = int(selected_year_str)
-        except ValueError:
-            st.error("Lütfen geçerli bir yıl girin.")
-            selected_year = None
-            
-        num_movies_year = st.slider("Kaç film gösterilsin?", 5, 50, 10)
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            user_input = st.selectbox("Kullanıcı ID seçin:", [""] + top_users)
+        with col2:
+            num_user_rec = st.selectbox("Öneri Sayısı:", [5, 10, 15, 20], index=1)
         
-        if st.button("📅 Yılın En İyilerini Göster", type="primary", key='year_button'):
-            if selected_year:
-                top_movies = get_top_movies_by_year(df_filtered, selected_year, num_movies_year)
+        if st.button("👤 Kullanıcı Önerileri Al", type="primary"):
+            if user_input:
+                user_id = int(user_input)
+                recommendations = recommend_by_user(
+                    user_id, user_movie_matrix, movie_similarity_df, df, num_user_rec
+                )
                 
-                if not top_movies:
-                    st.error(f"❌ {selected_year} yılı için film bulunamadı.")
+                if recommendations is None:
+                    st.error("❌ Kullanıcı bulunamadı.")
+                elif not recommendations:
+                    st.warning("⚠️ Bu kullanıcı için izlenmiş film bulunamadı.")
                 else:
-                    st.success(f"✅ {selected_year} yılının en iyi filmleri:")
+                    st.success(f"✅ Kullanıcı {user_id} için öneriler:")
                     
-                    # Tablo olarak göster
-                    movies_df = pd.DataFrame(top_movies)
-                    movies_df = movies_df.rename(columns={
-                        'TITLE': 'Film',
-                        'IMDB_SCORE': 'IMDb Skoru',
-                        'GENRES': 'Türler'
-                    })
-                    st.dataframe(movies_df, use_container_width=True)
+                    # Kullanıcının izlediği filmler
+                    user_movies = df[df['USERID'] == user_id]['TITLE'].unique()
+                    st.write(f"**İzlediği film sayısı:** {len(user_movies)}")
                     
-                    # Grafik
-                    fig = px.bar(movies_df, x='Film', y='IMDb Skoru', 
-                                 title=f'{selected_year} Yılının En İyi Filmleri',
-                                 color='IMDb Skoru', color_continuous_scale='blues')
+                    with st.expander("İzlediği filmlerden bazıları"):
+                        for movie in user_movies[:10]:
+                            st.write(f"• {movie}")
+                    
+                    # Önerileri göster
+                    rec_df = pd.DataFrame(recommendations)
+                    st.dataframe(rec_df, use_container_width=True)
+                    
+                    # Öneri skoru grafiği
+                    fig = px.bar(rec_df, x='Film', y='Öneri Skoru', 
+                               title=f'Kullanıcı {user_id} - Öneri Skorları',
+                               color='IMDb Skoru', color_continuous_scale='plasma')
                     fig.update_layout(xaxis_tickangle=-45)
                     st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("⚠️ Lütfen bir kullanıcı ID seçin.")
     
     with tab3:
-        st.header("🎭 Türe Göre En İyi Filmler")
+        st.header("📅 Yıla Göre En İyi Filmler")
         
-        # Tür girişi için metin kutusu
-        selected_genre = st.text_input("Tür girin:", "Action", placeholder="Örnek: Comedy, Drama", key='genre_input_text')
-        num_movies_genre = st.slider("Kaç film gösterilsin?", 5, 50, 10, key='genre_slider')
+        years = sorted(df['YEAR'].unique(), reverse=True)
+        selected_year = st.selectbox("Yıl seçin:", years)
         
-        if st.button("🎭 Türün En İyilerini Göster", type="primary", key='genre_button'):
-            if selected_genre:
-                top_movies = get_top_movies_by_genre(df_filtered, selected_genre.strip())
-                
-                if not top_movies:
-                    st.error(f"❌ '{selected_genre}' türü için film bulunamadı.")
-                else:
-                    st.success(f"✅ '{selected_genre}' türünün en iyi filmleri:")
-                    
-                    # Tablo olarak göster
-                    movies_df = pd.DataFrame(top_movies)
-                    movies_df = movies_df.rename(columns={
-                        'TITLE': 'Film',
-                        'YEAR': 'Yıl',
-                        'IMDB_SCORE': 'IMDb Skoru'
-                    })
-                    st.dataframe(movies_df, use_container_width=True)
-                    
-                    # Grafik
-                    fig = px.scatter(movies_df, x='Yıl', y='IMDb Skoru', 
-                                     size='IMDb Skoru', hover_name='Film',
-                                     title=f'{selected_genre} Türü - Yıl ve IMDb Skoru Dağılımı',
-                                     color='IMDb Skoru', color_continuous_scale='reds')
-                    st.plotly_chart(fig, use_container_width=True)
+        if st.button("📅 Yılın En İyilerini Göster", type="primary"):
+            top_movies = get_top_movies_by_year(df_filtered, selected_year)
+            
+            if not top_movies:
+                st.error(f"❌ {selected_year} yılı için film bulunamadı.")
             else:
-                st.warning("⚠️ Lütfen bir tür girin.")
+                st.success(f"✅ {selected_year} yılının en iyi filmleri:")
+                
+                # Tablo olarak göster
+                movies_df = pd.DataFrame(top_movies)
+                movies_df = movies_df.rename(columns={
+                    'TITLE': 'Film',
+                    'IMDB_SCORE': 'IMDb Skoru',
+                    'GENRES': 'Türler'
+                })
+                st.dataframe(movies_df, use_container_width=True)
+                
+                # Grafik
+                fig = px.bar(movies_df, x='Film', y='IMDb Skoru', 
+                           title=f'{selected_year} Yılının En İyi Filmleri',
+                           color='IMDb Skoru', color_continuous_scale='blues')
+                fig.update_layout(xaxis_tickangle=-45)
+                st.plotly_chart(fig, use_container_width=True)
     
     with tab4:
+        st.header("🎭 Türe Göre En İyi Filmler")
+        
+        # Mevcut türleri al
+        all_genres = set()
+        for genres in df['GENRES'].dropna():
+            all_genres.update([g.strip() for g in genres.split('|')])
+        
+        popular_genres = ['Action', 'Comedy', 'Drama', 'Romance', 'Thriller', 
+                         'Horror', 'Adventure', 'Animation', 'Crime', 'Mystery']
+        
+        available_popular = [g for g in popular_genres if g in all_genres]
+        other_genres = sorted([g for g in all_genres if g not in popular_genres])
+        
+        genre_options = available_popular + other_genres
+        
+        selected_genre = st.selectbox("Tür seçin:", genre_options)
+        
+        if st.button("🎭 Türün En İyilerini Göster", type="primary"):
+            top_movies = get_top_movies_by_genre(df_filtered, selected_genre)
+            
+            if not top_movies:
+                st.error(f"❌ {selected_genre} türü için film bulunamadı.")
+            else:
+                st.success(f"✅ {selected_genre} türünün en iyi filmleri:")
+                
+                # Tablo olarak göster
+                movies_df = pd.DataFrame(top_movies)
+                movies_df = movies_df.rename(columns={
+                    'TITLE': 'Film',
+                    'YEAR': 'Yıl',
+                    'IMDB_SCORE': 'IMDb Skoru'
+                })
+                st.dataframe(movies_df, use_container_width=True)
+                
+                # Grafik
+                fig = px.scatter(movies_df, x='Yıl', y='IMDb Skoru', 
+                               size='IMDb Skoru', hover_name='Film',
+                               title=f'{selected_genre} Türü - Yıl ve IMDb Skoru Dağılımı',
+                               color='IMDb Skoru', color_continuous_scale='reds')
+                st.plotly_chart(fig, use_container_width=True)
+    
+    with tab5:
         st.header("🔍 Veri Keşfi ve Analiz")
         
         # Genel istatistikler
@@ -449,15 +525,15 @@ def main():
         if chart_type == "En Çok Değerlendirilen Filmler":
             top_rated = df['TITLE'].value_counts().head(20)
             fig = px.bar(x=top_rated.values, y=top_rated.index, 
-                         title='En Çok Değerlendirilen 20 Film',
-                         labels={'x': 'Değerlendirme Sayısı', 'y': 'Film'},
-                         orientation='h')
+                        title='En Çok Değerlendirilen 20 Film',
+                        labels={'x': 'Değerlendirme Sayısı', 'y': 'Film'},
+                        orientation='h')
             st.plotly_chart(fig, use_container_width=True)
             
         elif chart_type == "Yıllara Göre Film Sayısı":
             year_counts = df.groupby('YEAR')['TITLE'].nunique().reset_index()
             fig = px.area(year_counts, x='YEAR', y='TITLE', 
-                          title='Yıllara Göre Film Sayısı Trend')
+                         title='Yıllara Göre Film Sayısı Trend')
             st.plotly_chart(fig, use_container_width=True)
             
         elif chart_type == "En Popüler Türler":
@@ -472,13 +548,13 @@ def main():
             genre_df = genre_df.sort_values('Sayı', ascending=False).head(15)
             
             fig = px.bar(genre_df, x='Sayı', y='Tür', 
-                         title='En Popüler 15 Film Türü',
-                         orientation='h')
+                        title='En Popüler 15 Film Türü',
+                        orientation='h')
             st.plotly_chart(fig, use_container_width=True)
             
         elif chart_type == "Rating Dağılımı":
             fig = px.histogram(df, x='RATING', nbins=50, 
-                               title='Rating Dağılımı (1-5 Skala)')
+                             title='Rating Dağılımı (1-5 Skala)')
             st.plotly_chart(fig, use_container_width=True)
         
         # Veri seti örneği
