@@ -2,14 +2,15 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import unicodedata
-import difflib
 import gdown
 import os
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
 import time
+import re
 
 # Streamlit sayfa yapılandırması
 st.set_page_config(
@@ -87,11 +88,77 @@ def weighted_rating(rating, votes, min_votes, mean_rating):
     return (votes / denominator) * rating + (min_votes / denominator) * mean_rating
 
 def normalize_title(title):
-    """Film başlıklarını normalleştir"""
-    return ''.join(
-        c for c in unicodedata.normalize('NFD', title)
+    """Film başlıklarını normalleştir - gelişmiş versiyon"""
+    # Unicode karakterleri kaldır
+    normalized = ''.join(
+        c for c in unicodedata.normalize('NFD', title.lower())
         if unicodedata.category(c) != 'Mn'
-    ).lower().strip()
+    )
+    
+    # Özel karakterleri kaldır ve temizle
+    normalized = re.sub(r'[^\w\s]', ' ', normalized)
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    
+    return normalized
+
+def advanced_movie_search(query, movie_titles, top_n=5):
+    """Gelişmiş film arama sistemi - TF-IDF tabanlı"""
+    if not query.strip():
+        return []
+    
+    # Film başlıklarını normalleştir
+    normalized_titles = [normalize_title(title) for title in movie_titles]
+    normalized_query = normalize_title(query)
+    
+    # TF-IDF vektörleştirme
+    vectorizer = TfidfVectorizer(
+        analyzer='word',
+        ngram_range=(1, 2),
+        stop_words=None,
+        lowercase=True,
+        max_features=10000
+    )
+    
+    try:
+        # Tüm metinleri (sorgu + başlıklar) vektörleştir
+        all_texts = [normalized_query] + normalized_titles
+        tfidf_matrix = vectorizer.fit_transform(all_texts)
+        
+        # Sorgu vektörü ile film başlıkları arasında benzerlik hesapla
+        query_vector = tfidf_matrix[0:1]
+        title_vectors = tfidf_matrix[1:]
+        
+        # Cosine similarity hesapla
+        similarities = cosine_similarity(query_vector, title_vectors).flatten()
+        
+        # En benzer filmleri bul
+        similar_indices = similarities.argsort()[-top_n:][::-1]
+        
+        results = []
+        for idx in similar_indices:
+            if similarities[idx] > 0.1:  # Minimum benzerlik eşiği
+                results.append({
+                    'title': movie_titles[idx],
+                    'similarity': similarities[idx],
+                    'normalized': normalized_titles[idx]
+                })
+        
+        return results
+        
+    except Exception as e:
+        st.warning(f"Arama hatası: {e}")
+        # Fallback: basit string matching
+        query_lower = normalized_query
+        matches = []
+        for i, title in enumerate(normalized_titles):
+            if query_lower in title:
+                matches.append({
+                    'title': movie_titles[i],
+                    'similarity': len(query_lower) / len(title),
+                    'normalized': title
+                })
+        
+        return sorted(matches, key=lambda x: x['similarity'], reverse=True)[:top_n]
 
 @st.cache_data(ttl=3600)
 def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
@@ -175,9 +242,6 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
             columns=user_movie_matrix.columns
         )
         
-        # Normalleştirilmiş başlık sözlüğü
-        normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
-        
         progress_bar.progress(100)
         status_text.text('✅ Veri hazırlama tamamlandı!')
         
@@ -185,32 +249,30 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         progress_bar.empty()
         status_text.empty()
         
-        return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict
+        return df, df_filtered, user_movie_matrix, movie_similarity_df
         
     except Exception as e:
         st.error(f"❌ Veri hazırlanırken hata oluştu: {str(e)}")
-        return None, None, None, None, None
+        return None, None, None, None
 
-def find_best_match(input_title, normalized_titles_dict):
-    """En iyi eşleşen film başlığını bul"""
-    normalized_input = normalize_title(input_title)
-    close_matches = difflib.get_close_matches(normalized_input, normalized_titles_dict.keys(), n=1)
-    return normalized_titles_dict[close_matches[0]] if close_matches else None
-
-def suggest_alternatives(input_title, normalized_titles_dict, n=3):
-    """Alternatif film önerileri"""
-    normalized_input = normalize_title(input_title)
-    return [normalized_titles_dict[t] for t in difflib.get_close_matches(normalized_input, normalized_titles_dict.keys(), n=n)]
-
-def recommend_by_title(title, similarity_df, df, top_n=5, normalized_titles_dict=None):
-    """Film başlığına göre öneri yap"""
-    match = find_best_match(title, normalized_titles_dict)
+def recommend_by_title(title, similarity_df, df, top_n=5):
+    """Film başlığına göre öneri yap - gelişmiş arama ile"""
+    available_movies = list(similarity_df.columns)
     
-    if not match:
-        alternatives = suggest_alternatives(title, normalized_titles_dict)
-        return None, alternatives
+    # Gelişmiş arama kullan
+    search_results = advanced_movie_search(title, available_movies, top_n=10)
     
-    scores = similarity_df[match].drop(labels=[match], errors="ignore")
+    if not search_results:
+        return None, []
+    
+    # En iyi eşleşmeyi al
+    best_match = search_results[0]['title']
+    
+    # Bu filmin benzerlik skorlarını al
+    if best_match not in similarity_df.columns:
+        return None, [result['title'] for result in search_results[:5]]
+    
+    scores = similarity_df[best_match].drop(labels=[best_match], errors="ignore")
     recommendations = scores.sort_values(ascending=False).head(top_n)
     
     # Film bilgilerini ekle
@@ -225,36 +287,7 @@ def recommend_by_title(title, similarity_df, df, top_n=5, normalized_titles_dict
             "Türler": movie_info["GENRES"]
         })
     
-    return rec_data, match
-
-def recommend_by_user(user_id, user_matrix, similarity_df, df, top_n=5):
-    """Kullanıcı geçmişine göre öneri yap"""
-    if user_id not in user_matrix.index:
-        return None
-    
-    user_ratings = user_matrix.loc[user_id]
-    watched = user_ratings[user_ratings > 0]
-    
-    if watched.empty:
-        return []
-    
-    scores = similarity_df[watched.index].dot(watched)
-    scores = scores.drop(watched.index, errors='ignore')
-    recommendations = scores.sort_values(ascending=False).head(top_n)
-    
-    # Film bilgilerini ekle
-    rec_data = []
-    for movie, score in recommendations.items():
-        movie_info = df[df["TITLE"] == movie].iloc[0]
-        rec_data.append({
-            "Film": movie,
-            "Öneri Skoru": f"{score:.2f}",
-            "IMDb Skoru": f"{movie_info['IMDB_SCORE']:.2f}",
-            "Yıl": int(movie_info["YEAR"]),
-            "Türler": movie_info["GENRES"]
-        })
-    
-    return rec_data
+    return rec_data, best_match
 
 def get_top_movies_by_year(df, year, top_n=10):
     """Yıla göre en iyi filmleri getir"""
@@ -291,14 +324,13 @@ def main():
         filepath = download_data_from_drive(FILE_ID)
         
         if filepath is not None:
-            df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict = prepare_data(filepath)
+            df, df_filtered, user_movie_matrix, movie_similarity_df = prepare_data(filepath)
             
             if df is not None:
                 st.session_state.df = df
                 st.session_state.df_filtered = df_filtered
                 st.session_state.user_movie_matrix = user_movie_matrix
                 st.session_state.movie_similarity_df = movie_similarity_df
-                st.session_state.normalized_titles_dict = normalized_titles_dict
                 st.session_state.data_loaded = True
             else:
                 st.error("❌ Veri hazırlanamadı. Lütfen sayfayı yenileyin.")
@@ -312,7 +344,6 @@ def main():
     df_filtered = st.session_state.df_filtered
     user_movie_matrix = st.session_state.user_movie_matrix
     movie_similarity_df = st.session_state.movie_similarity_df
-    normalized_titles_dict = st.session_state.normalized_titles_dict
     
     # Sidebar - İstatistikler
     with st.sidebar:
@@ -335,9 +366,8 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
     
     # Ana içerik
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "🎯 Film Bazlı Öneriler", 
-        "👤 Kullanıcı Bazlı Öneriler", 
         "📅 Yıla Göre En İyiler",
         "🎭 Türe Göre En İyiler",
         "🔍 Veri Keşfi"
@@ -345,24 +375,36 @@ def main():
     
     with tab1:
         st.header("🎯 Film Bazlı Öneriler")
-        st.write("Sevdiğiniz bir filmi yazın, benzer filmleri önereceğiz!")
+        st.write("Sevdiğiniz bir filmi yazın, benzer filmleri önereceğiz! Gelişmiş arama sistemi ile tam eşleşme gerekmiyor.")
         
         col1, col2 = st.columns([3, 1])
         with col1:
-            movie_input = st.text_input("Film Adı:", placeholder="Örnek: The Shawshank Redemption")
+            movie_input = st.text_input("Film Adı:", placeholder="Örnek: Shawshank, Matrix, Batman...")
         with col2:
             num_recommendations = st.selectbox("Öneri Sayısı:", [5, 10, 15, 20], index=0)
+        
+        # Anlık arama önerileri
+        if movie_input and len(movie_input) >= 2:
+            search_results = advanced_movie_search(movie_input, list(movie_similarity_df.columns), top_n=5)
+            if search_results:
+                st.write("**Bulunan filmler:**")
+                for i, result in enumerate(search_results[:5]):
+                    similarity_percent = int(result['similarity'] * 100)
+                    st.write(f"{i+1}. {result['title']} (Benzerlik: {similarity_percent}%)")
         
         if st.button("🎬 Öneri Al", type="primary"):
             if movie_input:
                 recommendations, match_or_alternatives = recommend_by_title(
-                    movie_input, movie_similarity_df, df, num_recommendations, normalized_titles_dict
+                    movie_input, movie_similarity_df, df, num_recommendations
                 )
                 
                 if recommendations is None:
-                    st.error("❌ Film bulunamadı. Şunları kastetmiş olabilir misiniz?")
-                    for alt in match_or_alternatives:
-                        st.write(f"• {alt}")
+                    if match_or_alternatives:
+                        st.error("❌ Tam eşleşme bulunamadı. Şunları kastetmiş olabilir misiniz?")
+                        for alt in match_or_alternatives:
+                            st.write(f"• {alt}")
+                    else:
+                        st.error("❌ Hiç eşleşen film bulunamadı. Lütfen farklı bir arama terimi deneyin.")
                 else:
                     st.success(f"✅ '{match_or_alternatives}' filmine göre öneriler:")
                     
@@ -380,66 +422,23 @@ def main():
                 st.warning("⚠️ Lütfen bir film adı girin.")
     
     with tab2:
-        st.header("👤 Kullanıcı Bazlı Öneriler")
-        st.write("Kullanıcı ID'sine göre kişiselleştirilmiş öneriler!")
-        
-        # En aktif kullanıcıları göster
-        top_users = df["USERID"].value_counts().head(20).index.tolist()
-        
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            user_input = st.selectbox("Kullanıcı ID seçin:", [""] + top_users)
-        with col2:
-            num_user_rec = st.selectbox("Öneri Sayısı:", [5, 10, 15, 20], index=1)
-        
-        if st.button("👤 Kullanıcı Önerileri Al", type="primary"):
-            if user_input:
-                user_id = int(user_input)
-                recommendations = recommend_by_user(
-                    user_id, user_movie_matrix, movie_similarity_df, df, num_user_rec
-                )
-                
-                if recommendations is None:
-                    st.error("❌ Kullanıcı bulunamadı.")
-                elif not recommendations:
-                    st.warning("⚠️ Bu kullanıcı için izlenmiş film bulunamadı.")
-                else:
-                    st.success(f"✅ Kullanıcı {user_id} için öneriler:")
-                    
-                    # Kullanıcının izlediği filmler
-                    user_movies = df[df['USERID'] == user_id]['TITLE'].unique()
-                    st.write(f"**İzlediği film sayısı:** {len(user_movies)}")
-                    
-                    with st.expander("İzlediği filmlerden bazıları"):
-                        for movie in user_movies[:10]:
-                            st.write(f"• {movie}")
-                    
-                    # Önerileri göster
-                    rec_df = pd.DataFrame(recommendations)
-                    st.dataframe(rec_df, use_container_width=True)
-                    
-                    # Öneri skoru grafiği
-                    fig = px.bar(rec_df, x='Film', y='Öneri Skoru', 
-                               title=f'Kullanıcı {user_id} - Öneri Skorları',
-                               color='IMDb Skoru', color_continuous_scale='plasma')
-                    fig.update_layout(xaxis_tickangle=-45)
-                    st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("⚠️ Lütfen bir kullanıcı ID seçin.")
-    
-    with tab3:
         st.header("📅 Yıla Göre En İyi Filmler")
         
         years = sorted(df['YEAR'].unique(), reverse=True)
-        selected_year = st.selectbox("Yıl seçin:", years)
+        
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected_year = st.selectbox("Yıl seçin:", years)
+        with col2:
+            year_num_rec = st.selectbox("Kaç film gösterilsin:", [5, 10, 15, 20, 25], index=1, key="year_num")
         
         if st.button("📅 Yılın En İyilerini Göster", type="primary"):
-            top_movies = get_top_movies_by_year(df_filtered, selected_year)
+            top_movies = get_top_movies_by_year(df_filtered, selected_year, year_num_rec)
             
             if not top_movies:
                 st.error(f"❌ {selected_year} yılı için film bulunamadı.")
             else:
-                st.success(f"✅ {selected_year} yılının en iyi filmleri:")
+                st.success(f"✅ {selected_year} yılının en iyi {len(top_movies)} filmi:")
                 
                 # Tablo olarak göster
                 movies_df = pd.DataFrame(top_movies)
@@ -452,12 +451,12 @@ def main():
                 
                 # Grafik
                 fig = px.bar(movies_df, x='Film', y='IMDb Skoru', 
-                           title=f'{selected_year} Yılının En İyi Filmleri',
+                           title=f'{selected_year} Yılının En İyi {len(top_movies)} Filmi',
                            color='IMDb Skoru', color_continuous_scale='blues')
                 fig.update_layout(xaxis_tickangle=-45)
                 st.plotly_chart(fig, use_container_width=True)
     
-    with tab4:
+    with tab3:
         st.header("🎭 Türe Göre En İyi Filmler")
         
         # Mevcut türleri al
@@ -473,15 +472,19 @@ def main():
         
         genre_options = available_popular + other_genres
         
-        selected_genre = st.selectbox("Tür seçin:", genre_options)
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected_genre = st.selectbox("Tür seçin:", genre_options)
+        with col2:
+            genre_num_rec = st.selectbox("Kaç film gösterilsin:", [5, 10, 15, 20, 25], index=1, key="genre_num")
         
         if st.button("🎭 Türün En İyilerini Göster", type="primary"):
-            top_movies = get_top_movies_by_genre(df_filtered, selected_genre)
+            top_movies = get_top_movies_by_genre(df_filtered, selected_genre, genre_num_rec)
             
             if not top_movies:
                 st.error(f"❌ {selected_genre} türü için film bulunamadı.")
             else:
-                st.success(f"✅ {selected_genre} türünün en iyi filmleri:")
+                st.success(f"✅ {selected_genre} türünün en iyi {len(top_movies)} filmi:")
                 
                 # Tablo olarak göster
                 movies_df = pd.DataFrame(top_movies)
@@ -495,11 +498,11 @@ def main():
                 # Grafik
                 fig = px.scatter(movies_df, x='Yıl', y='IMDb Skoru', 
                                size='IMDb Skoru', hover_name='Film',
-                               title=f'{selected_genre} Türü - Yıl ve IMDb Skoru Dağılımı',
+                               title=f'{selected_genre} Türü - En İyi {len(top_movies)} Film (Yıl ve IMDb Skoru)',
                                color='IMDb Skoru', color_continuous_scale='reds')
                 st.plotly_chart(fig, use_container_width=True)
     
-    with tab5:
+    with tab4:
         st.header("🔍 Veri Keşfi ve Analiz")
         
         # Genel istatistikler
