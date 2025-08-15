@@ -94,7 +94,7 @@ def normalize_title(title):
     ).lower().strip()
 
 @st.cache_data(ttl=3600)
-def prepare_data(filepath, vote_threshold=100, min_votes=500):
+def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
     """Veri setini hazırla ve öneri sistemi için işle"""
     
     progress_bar = st.progress(0)
@@ -563,4 +563,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
