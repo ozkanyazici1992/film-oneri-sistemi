@@ -41,7 +41,7 @@ def normalize_title(title):
         if unicodedata.category(c) != 'Mn'
     ).lower().strip()
 
-def prepare_data(filepath="others/movies_imdb.csv", vote_threshold=1000, min_votes=2500):
+def prepare_data(filepath="others/movies_imdb.csv", vote_threshold=10, min_votes=2500):
     """
     Prepare the dataset for recommendations:
 
@@ -374,4 +374,5 @@ and user experience. This was especially helpful for users to easily distinguish
   * **TIME:** Rating date
   * **NUM\_VOTES:** Total number of votes
   * **IMDB\_SCORE:** Weighted IMDb score
+
 """
