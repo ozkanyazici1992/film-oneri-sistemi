@@ -252,7 +252,7 @@ def get_top_movies_by_genre(df, genre, top_n=10):
 def main():
     # Ana başlık
     st.markdown('<h1 class="main-header">🎬 Film Öneri Sistemi</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">26M+ film verisi ile kişiselleştirilmiş öneriler</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">1.5M film verisi ile kişiselleştirilmiş öneriler</p>', unsafe_allow_html=True)
     
     # Google Drive dosya ID'si
     FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
@@ -493,4 +493,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
