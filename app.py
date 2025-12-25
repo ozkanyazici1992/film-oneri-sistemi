@@ -18,10 +18,10 @@ st.set_page_config(
     page_title="CineAI | Film Keşif Asistanı",
     page_icon="🍿",
     layout="wide",
-    initial_sidebar_state="collapsed" # Sidebar'ı kapalı başlatarak daha geniş alan sağladık
+    initial_sidebar_state="collapsed"
 )
 
-# Modern CSS (Turkuaz & Dark Tema)
+# Modern CSS (Turkuaz & Dark Tema - Glassmorphism)
 st.markdown("""
 <style>
     /* Google Fonts */
@@ -160,7 +160,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. VERİ YÜKLEME VE İŞLEME FONKSİYONLARI (Mantık Korundu)
+# 2. VERİ YÜKLEME VE İŞLEME FONKSİYONLARI
 # -----------------------------------------------------------------------------
 
 @st.cache_data(ttl=3600)
@@ -169,7 +169,7 @@ def download_data_from_drive(file_id):
         url = f"https://drive.google.com/uc?id={file_id}"
         output_file = "movies_imdb_2.csv"
         
-        # Sadece dosya yoksa spinner göster
+        # Dosya yoksa indir
         if not os.path.exists(output_file):
             with st.spinner('📥 Film arşivi indiriliyor...'):
                 gdown.download(url, output_file, quiet=False)
@@ -193,7 +193,6 @@ def normalize_title(title):
 @st.cache_data(ttl=3600)
 def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
     try:
-        # Daha temiz bir yükleme deneyimi için placeholder
         loading_placeholder = st.empty()
         loading_placeholder.info("🚀 CineAI motoru başlatılıyor...")
         
@@ -240,7 +239,7 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
         
-        loading_placeholder.empty() # Yükleme mesajını kaldır
+        loading_placeholder.empty()
         return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict
         
     except Exception as e:
@@ -358,7 +357,8 @@ def main():
             yaxis=dict(showgrid=False, showticklabels=False),
             showlegend=False
         )
-        fig_mini.update_traces(line_color='#40E0D0', fill_color='rgba(64, 224, 208, 0.2)')
+        # HATA BURADAYDI, DÜZELTİLDİ: fill_color -> fillcolor (Bitişik yazılmalı)
+        fig_mini.update_traces(line_color='#40E0D0', fillcolor='rgba(64, 224, 208, 0.2)')
         st.plotly_chart(fig_mini, use_container_width=True)
 
     # --- ANA MENÜ (TABS) ---
