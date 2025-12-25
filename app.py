@@ -171,7 +171,7 @@ st.markdown("""
 # 2. VERİ YÜKLEME VE İŞLEME (HIZ İÇİN OPTİMİZE EDİLDİ)
 # -----------------------------------------------------------------------------
 
-@st.cache_resource(ttl=3600) # cache_resource BÜYÜK FARK YARATIR (HIZLANDIRIR)
+@st.cache_resource(ttl=3600)
 def download_data_from_drive(file_id):
     try:
         url = f"https://drive.google.com/uc?id={file_id}"
@@ -196,7 +196,6 @@ def normalize_title(title):
         if unicodedata.category(c) != 'Mn'
     ).lower().strip()
 
-# BU FONKSİYON ARTIK 'cache_resource' KULLANIYOR - ÇOK DAHA HIZLI
 @st.cache_resource(ttl=3600, show_spinner="Veriler işleniyor...")
 def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
     try:
@@ -284,7 +283,6 @@ def display_movie_cards(movies_data, col_count=4):
     
     for idx, movie in enumerate(movies_data):
         with cols[idx % col_count]:
-            # Kart HTML yapısı
             html_content = f"""
             <div class="movie-card">
                 <div style="font-size: 3rem; text-align: center; margin-bottom: 10px;">🎬</div>
@@ -300,13 +298,20 @@ def display_movie_cards(movies_data, col_count=4):
             </div>
             """
             st.markdown(html_content, unsafe_allow_html=True)
-            st.write("") # Boşluk
 
 # -----------------------------------------------------------------------------
 # 4. ANA UYGULAMA
 # -----------------------------------------------------------------------------
 
 def main():
+    # Session state başlatma - ÖNEMLI: Menü çoğalmasını önler
+    if 'data_loaded' not in st.session_state:
+        st.session_state.data_loaded = False
+        st.session_state.df = None
+        st.session_state.df_filtered = None
+        st.session_state.movie_similarity_df = None
+        st.session_state.normalized_titles_dict = None
+
     # --- HERO SECTION ---
     st.markdown("""
         <div class="hero-container">
@@ -315,19 +320,32 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    # Veri Yükleme
-    FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
-    filepath = download_data_from_drive(FILE_ID)
-    
-    if filepath:
-        # Spinner ana gövdede görünsün
-        with st.spinner('🚀 CineAI motoru ve veri seti yükleniyor... Bu işlem ilk seferde biraz sürebilir.'):
-            df, df_filtered, _, movie_similarity_df, normalized_titles_dict = prepare_data(filepath)
-            
-        if df is None:
+    # Veri Yükleme - Sadece bir kez
+    if not st.session_state.data_loaded:
+        FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
+        filepath = download_data_from_drive(FILE_ID)
+        
+        if filepath:
+            with st.spinner('🚀 CineAI motoru ve veri seti yükleniyor...'):
+                df, df_filtered, _, movie_similarity_df, normalized_titles_dict = prepare_data(filepath)
+                
+                if df is not None:
+                    st.session_state.df = df
+                    st.session_state.df_filtered = df_filtered
+                    st.session_state.movie_similarity_df = movie_similarity_df
+                    st.session_state.normalized_titles_dict = normalized_titles_dict
+                    st.session_state.data_loaded = True
+                    st.rerun()
+                else:
+                    st.stop()
+        else:
             st.stop()
-    else:
-        st.stop()
+    
+    # Session state'ten verileri al
+    df = st.session_state.df
+    df_filtered = st.session_state.df_filtered
+    movie_similarity_df = st.session_state.movie_similarity_df
+    normalized_titles_dict = st.session_state.normalized_titles_dict
 
     # --- SIDEBAR (İSTATİSTİKLER) ---
     with st.sidebar:
@@ -351,9 +369,9 @@ def main():
             showlegend=False
         )
         fig_mini.update_traces(line_color='#40E0D0', fillcolor='rgba(64, 224, 208, 0.2)')
-        st.plotly_chart(fig_mini, use_container_width=True)
+        st.plotly_chart(fig_mini, use_container_width=True, key="sidebar_chart")
 
-    # --- ANA MENÜ (TABS) ---
+    # --- ANA MENÜ (TABS) - Key parametresi eklendi ---
     tab1, tab2, tab3, tab4 = st.tabs([
         "🔍 Film Önerisi", 
         "🏆 Yılın En İyileri", 
@@ -367,15 +385,18 @@ def main():
         
         col_search, col_count = st.columns([3, 1])
         with col_search:
-            movie_input = st.text_input("", placeholder="Film adı yazın... (örn: Inception, Matrix)", label_visibility="collapsed")
+            movie_input = st.text_input("", placeholder="Film adı yazın... (örn: Inception, Matrix)", 
+                                       label_visibility="collapsed", key="movie_search_input")
         with col_count:
-            num_rec = st.selectbox("", [4, 8, 12], index=0, label_visibility="collapsed", format_func=lambda x: f"{x} Öneri")
+            num_rec = st.selectbox("", [4, 8, 12], index=0, label_visibility="collapsed", 
+                                  format_func=lambda x: f"{x} Öneri", key="num_rec_select")
 
-        if st.button("Bana Benzerlerini Bul", type="primary"):
+        if st.button("Bana Benzerlerini Bul", type="primary", key="search_button"):
             if movie_input:
-                recommendations, match = recommend_by_title(
-                    movie_input, movie_similarity_df, df, num_rec, normalized_titles_dict
-                )
+                with st.spinner('🔍 Benzer filmler aranıyor...'):
+                    recommendations, match = recommend_by_title(
+                        movie_input, movie_similarity_df, df, num_rec, normalized_titles_dict
+                    )
                 
                 if recommendations:
                     st.success(f"✅ **{match}** filmine dayalı önerilerimiz:")
@@ -393,7 +414,7 @@ def main():
         col_y1, col_y2 = st.columns([1, 3])
         with col_y1:
             years = sorted(df['YEAR'].unique(), reverse=True)
-            sel_year = st.selectbox("Yıl Seçin", years)
+            sel_year = st.selectbox("Yıl Seçin", years, key="year_select")
         
         top_year = df_filtered[df_filtered['YEAR'] == sel_year].groupby(['TITLE', 'GENRES'])['IMDB_SCORE'].mean().reset_index()
         top_year = top_year.sort_values('IMDB_SCORE', ascending=False).head(8)
@@ -413,7 +434,7 @@ def main():
     # 3. SEKME: TÜR KEŞFİ
     with tab3:
         all_genres = sorted(list(set([g for sublist in df['GENRES'].dropna().str.split('|') for g in sublist])))
-        sel_genre = st.selectbox("Hangi türde film arıyorsun?", all_genres)
+        sel_genre = st.selectbox("Hangi türde film arıyorsun?", all_genres, key="genre_select")
         
         genre_movies = df_filtered[df_filtered["GENRES"].str.contains(sel_genre, na=False)]
         top_genre = genre_movies.groupby(['TITLE', 'YEAR'])['IMDB_SCORE'].mean().reset_index()
@@ -449,7 +470,7 @@ def main():
                 yaxis_title=None
             )
             fig_bar.update_traces(marker_color='#40E0D0')
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(fig_bar, use_container_width=True, key="genre_bar_chart")
             
         with col_a2:
             st.markdown("**IMDb Puan Dağılımı**")
@@ -463,7 +484,7 @@ def main():
                 bargap=0.1
             )
             fig_hist.update_traces(marker_color='#008B8B')
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, use_container_width=True, key="score_histogram")
 
 if __name__ == "__main__":
     main()
