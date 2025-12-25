@@ -177,6 +177,7 @@ st.markdown("""
         font-size: 1rem;
         transition: all 0.3s;
         font-weight: 500 !important;
+        caret-color: #FFD700 !important;
     }
     
     .stTextInput > div > div > input:focus {
@@ -192,6 +193,11 @@ st.markdown("""
     .stTextInput > div > div > input::placeholder {
         color: #b8b8b8 !important;
         font-weight: 400 !important;
+    }
+    
+    /* Keyboard icon'u kaldır */
+    .stTextInput button[kind="icon"] {
+        display: none !important;
     }
 
     /* BUTONLAR - GOLD THEME */
