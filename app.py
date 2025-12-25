@@ -7,7 +7,6 @@ import gdown
 import os
 from sklearn.metrics.pairwise import cosine_similarity
 import plotly.express as px
-import plotly.graph_objects as go
 
 # -----------------------------------------------------------------------------
 # 1. SAYFA YAPILANDIRMASI VE ULTRA MODERN CSS
@@ -177,7 +176,6 @@ st.markdown("""
         font-size: 1rem;
         transition: all 0.3s;
         font-weight: 500 !important;
-        caret-color: #FFD700 !important;
     }
     
     .stTextInput > div > div > input:focus {
@@ -193,11 +191,6 @@ st.markdown("""
     .stTextInput > div > div > input::placeholder {
         color: #b8b8b8 !important;
         font-weight: 400 !important;
-    }
-    
-    /* Keyboard icon'u kaldır */
-    .stTextInput button[kind="icon"] {
-        display: none !important;
     }
 
     /* BUTONLAR - GOLD THEME */
@@ -373,13 +366,6 @@ def download_data_from_drive(file_id):
         return None
 
 @st.cache_data
-def weighted_rating(rating, votes, min_votes, mean_rating):
-    denominator = votes + min_votes
-    if denominator == 0:
-        return 0
-    return (votes / denominator) * rating + (min_votes / denominator) * mean_rating
-
-@st.cache_data
 def normalize_title(title):
     return ''.join(
         c for c in unicodedata.normalize('NFD', title)
@@ -404,9 +390,12 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         df["NUM_VOTES"] = df["TITLE"].map(vote_counts)
         mean_rating = df["RATING_10"].mean()
         
+        # İstatistikler - Metadata için
         movie_stats = df.groupby("TITLE", sort=False).agg({
             "RATING_10": "mean",
-            "NUM_VOTES": "max"
+            "NUM_VOTES": "max",
+            "YEAR": "first",
+            "GENRES": "first"
         }).reset_index()
         
         # Vektörize weighted rating
@@ -417,6 +406,9 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         df["IMDB_SCORE"] = df["TITLE"].map(movie_stats.set_index("TITLE")["IMDB_SCORE"])
         
+        # --- OPTİMİZASYON: HIZLI ERİŞİM İÇİN SÖZLÜK ---
+        movie_metadata = movie_stats.set_index("TITLE")[["IMDB_SCORE", "YEAR", "GENRES"]].to_dict('index')
+
         # Filtreleme
         popular_titles = vote_counts[vote_counts >= vote_threshold].index
         df_filtered = df[df["TITLE"].isin(popular_titles)].copy()
@@ -451,14 +443,18 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
             genre_top = genre_data.groupby(['TITLE', 'YEAR'], sort=False)['IMDB_SCORE'].mean().reset_index()
             genre_best[genre] = genre_top.nlargest(8, 'IMDB_SCORE')
         
-        return df, df_filtered, movie_similarity_df, normalized_titles_dict, year_best, genre_best, all_genres
+        return df, df_filtered, movie_similarity_df, normalized_titles_dict, year_best, genre_best, all_genres, movie_metadata
         
     except Exception as e:
         st.error(f"❌ Veri işleme hatası: {str(e)}")
-        return None, None, None, None, None, None, None
+        # 8 adet dönüş değeri olmalı
+        return None, None, None, None, None, None, None, None
 
 @st.cache_data
-def recommend_by_title(_similarity_df, _df, title, top_n, _normalized_titles_dict):
+def recommend_by_title(_similarity_df, _movie_metadata, title, top_n, _normalized_titles_dict):
+    """
+    Optimize edilmiş öneri fonksiyonu. DataFrame yerine Sözlük (Dict) kullanır.
+    """
     normalized_input = normalize_title(title)
     close_matches = difflib.get_close_matches(normalized_input, _normalized_titles_dict.keys(), n=1, cutoff=0.6)
     
@@ -472,14 +468,16 @@ def recommend_by_title(_similarity_df, _df, title, top_n, _normalized_titles_dic
     
     rec_data = []
     for movie, similarity_score in recommendations.items():
-        movie_info = _df[_df["TITLE"] == movie].iloc[0]
-        rec_data.append({
-            "Film": movie,
-            "Benzerlik": float(similarity_score),
-            "IMDb": float(movie_info['IMDB_SCORE']),
-            "Yıl": int(movie_info["YEAR"]),
-            "Türler": movie_info["GENRES"].replace("|", ", ")
-        })
+        # DataFrame filtreleme yerine doğrudan sözlükten çekiyoruz (Çok daha hızlı)
+        if movie in _movie_metadata:
+            meta = _movie_metadata[movie]
+            rec_data.append({
+                "Film": movie,
+                "Benzerlik": float(similarity_score),
+                "IMDb": float(meta['IMDB_SCORE']),
+                "Yıl": int(meta['YEAR']),
+                "Türler": meta['GENRES'].replace("|", ", ")
+            })
     
     return rec_data, match
 
@@ -524,6 +522,12 @@ def main():
         st.session_state.year_best = None
         st.session_state.genre_best = None
         st.session_state.all_genres = None
+        st.session_state.movie_metadata = None # YENİ EKLENDİ
+
+    # Arama state yönetimi (Sorunu çözen kısım)
+    if 'search_active' not in st.session_state:
+        st.session_state.search_active = False
+        st.session_state.last_search_term = ""
 
     # Hero Section
     st.markdown("""
@@ -550,6 +554,7 @@ def main():
                     st.session_state.year_best = result[4]
                     st.session_state.genre_best = result[5]
                     st.session_state.all_genres = result[6]
+                    st.session_state.movie_metadata = result[7] # Sözlük yüklendi
                     st.session_state.data_loaded = True
                     st.rerun()
                 else:
@@ -565,6 +570,7 @@ def main():
     year_best = st.session_state.year_best
     genre_best = st.session_state.genre_best
     all_genres = st.session_state.all_genres
+    movie_metadata = st.session_state.movie_metadata # Sözlük alındı
 
     # Sidebar
     with st.sidebar:
@@ -599,35 +605,53 @@ def main():
         "📊 Veri Analizi"
     ])
 
-    # TAB 1: ÖNERİ
+    # TAB 1: ÖNERİ (DÜZELTİLDİ)
     with tab1:
         st.markdown("### 🎬 Hangi Filmi Beğendiniz?")
         
         col_search, col_count = st.columns([3, 1])
         with col_search:
-            movie_input = st.text_input("film_search", placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)",
-                                       label_visibility="collapsed", key="movie_search_input")
+            movie_input = st.text_input("film_search", 
+                                      placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)",
+                                      label_visibility="collapsed", 
+                                      key="movie_search_input")
         with col_count:
-            num_rec = st.selectbox("Öneri Sayısı", [4, 8, 12], index=0, label_visibility="collapsed",
-                                  format_func=lambda x: f"{x} Öneri", key="num_rec_select")
+            # Selectbox değiştiğinde state korunur
+            num_rec = st.selectbox("Öneri Sayısı", [4, 8, 12], index=0, 
+                                 label_visibility="collapsed",
+                                 format_func=lambda x: f"{x} Öneri", 
+                                 key="num_rec_select")
 
+        # Buton mantığı state'e bağlandı
         if st.button("🎯 Benzerlerini Keşfet", type="primary", key="search_button"):
-            if movie_input:
-                with st.spinner('🎬 Benzer filmler aranıyor...'):
-                    recommendations, match = recommend_by_title(
-                        movie_similarity_df, df, movie_input, num_rec, normalized_titles_dict
-                    )
-                
-                if recommendations:
-                    st.success(f"✨ **{match}** filmine benzer önerilerimiz:")
-                    st.markdown("---")
-                    display_movie_cards(recommendations, col_count=4)
-                else:
+            st.session_state.search_active = True
+            st.session_state.last_search_term = movie_input
+
+        # Arama aktifse sonuçları göster (Butona tekrar basılmasa bile)
+        if st.session_state.search_active and st.session_state.last_search_term:
+            with st.spinner('🎬 Benzer filmler aranıyor...'):
+                recommendations, match = recommend_by_title(
+                    movie_similarity_df, 
+                    movie_metadata, # Hızlı sözlük gönderildi
+                    st.session_state.last_search_term, # State'teki terim kullanıldı
+                    num_rec, 
+                    normalized_titles_dict
+                )
+            
+            if recommendations:
+                st.success(f"✨ **{match}** filmine benzer önerilerimiz:")
+                st.markdown("---")
+                display_movie_cards(recommendations, col_count=4)
+            else:
+                if match: # Alternatif öneriler
                     st.warning("🔍 Bu filmi bulamadık. Şunları mı demek istediniz?")
                     for alt in match:
                         st.info(f"• {alt}")
-            else:
-                st.error("⚠️ Lütfen bir film adı girin.")
+                else:
+                    st.error("⚠️ Lütfen geçerli bir film adı girin.")
+        elif st.session_state.search_active and not st.session_state.last_search_term:
+             st.error("⚠️ Lütfen bir film adı girin.")
+
 
     # TAB 2: YIL
     with tab2:
@@ -657,9 +681,9 @@ def main():
     with tab3:
         genre_options = ["🎭 Tür Seçin..."] + all_genres
         sel_genre_idx = st.selectbox("Hangi türde film arıyorsunuz?",
-                                      range(len(genre_options)),
-                                      format_func=lambda x: genre_options[x],
-                                      key="genre_select")
+                                     range(len(genre_options)),
+                                     format_func=lambda x: genre_options[x],
+                                     key="genre_select")
         
         if sel_genre_idx == 0:
             st.markdown("### 🎭 Tür Keşfi")
