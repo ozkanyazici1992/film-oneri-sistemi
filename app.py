@@ -143,15 +143,20 @@ st.markdown("""
         height: 50px;
         border-radius: 25px;
         background-color: rgba(255,255,255,0.05);
-        color: white !important;
+        color: #cccccc !important;
         border: 1px solid rgba(255,255,255,0.1);
         padding: 0 20px;
     }
 
     .stTabs [aria-selected="true"] {
         background-color: #40E0D0 !important;
-        color: black !important;
+        color: #000000 !important;
         font-weight: bold;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: rgba(64, 224, 208, 0.1);
+        color: #40E0D0 !important;
     }
 
     /* Sidebar */
@@ -242,11 +247,25 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
         
-        return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict
+        # ÖN HESAPLAMA: Yıl ve tür bazlı en iyi filmleri cache'le
+        year_best = {}
+        for year in df_filtered['YEAR'].unique():
+            year_data = df_filtered[df_filtered['YEAR'] == year].groupby(['TITLE', 'GENRES'])['IMDB_SCORE'].mean().reset_index()
+            year_best[year] = year_data.sort_values('IMDB_SCORE', ascending=False).head(8)
+        
+        # Tür listesi ve en iyi filmleri
+        all_genres = sorted(list(set([g for sublist in df['GENRES'].dropna().str.split('|') for g in sublist])))
+        genre_best = {}
+        for genre in all_genres:
+            genre_data = df_filtered[df_filtered["GENRES"].str.contains(genre, na=False)]
+            genre_top = genre_data.groupby(['TITLE', 'YEAR'])['IMDB_SCORE'].mean().reset_index()
+            genre_best[genre] = genre_top.sort_values('IMDB_SCORE', ascending=False).head(8)
+        
+        return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict, year_best, genre_best, all_genres
         
     except Exception as e:
         st.error(f"❌ Veri işleme hatası: {str(e)}")
-        return None, None, None, None, None
+        return None, None, None, None, None, None, None, None
 
 def recommend_by_title(title, similarity_df, df, top_n=5, normalized_titles_dict=None):
     normalized_input = normalize_title(title)
@@ -311,6 +330,9 @@ def main():
         st.session_state.df_filtered = None
         st.session_state.movie_similarity_df = None
         st.session_state.normalized_titles_dict = None
+        st.session_state.year_best = None
+        st.session_state.genre_best = None
+        st.session_state.all_genres = None
 
     # --- HERO SECTION ---
     st.markdown("""
@@ -327,13 +349,16 @@ def main():
         
         if filepath:
             with st.spinner('🚀 CineAI motoru ve veri seti yükleniyor...'):
-                df, df_filtered, _, movie_similarity_df, normalized_titles_dict = prepare_data(filepath)
+                df, df_filtered, _, movie_similarity_df, normalized_titles_dict, year_best, genre_best, all_genres = prepare_data(filepath)
                 
                 if df is not None:
                     st.session_state.df = df
                     st.session_state.df_filtered = df_filtered
                     st.session_state.movie_similarity_df = movie_similarity_df
                     st.session_state.normalized_titles_dict = normalized_titles_dict
+                    st.session_state.year_best = year_best
+                    st.session_state.genre_best = genre_best
+                    st.session_state.all_genres = all_genres
                     st.session_state.data_loaded = True
                     st.rerun()
                 else:
@@ -346,6 +371,9 @@ def main():
     df_filtered = st.session_state.df_filtered
     movie_similarity_df = st.session_state.movie_similarity_df
     normalized_titles_dict = st.session_state.normalized_titles_dict
+    year_best = st.session_state.year_best
+    genre_best = st.session_state.genre_best
+    all_genres = st.session_state.all_genres
 
     # --- SIDEBAR (İSTATİSTİKLER) ---
     with st.sidebar:
@@ -409,15 +437,15 @@ def main():
             else:
                 st.error("Lütfen bir film adı girin.")
 
-    # 2. SEKME: YILA GÖRE EN İYİLER
+    # 2. SEKME: YILA GÖRE EN İYİLER (ÖN HESAPLI - ÇOK HIZLI)
     with tab2:
         col_y1, col_y2 = st.columns([1, 3])
         with col_y1:
             years = sorted(df['YEAR'].unique(), reverse=True)
             sel_year = st.selectbox("Yıl Seçin", years, key="year_select")
         
-        top_year = df_filtered[df_filtered['YEAR'] == sel_year].groupby(['TITLE', 'GENRES'])['IMDB_SCORE'].mean().reset_index()
-        top_year = top_year.sort_values('IMDB_SCORE', ascending=False).head(8)
+        # Cache'den direkt çek - ANLIK!
+        top_year = year_best.get(sel_year, pd.DataFrame())
         
         top_year_list = []
         for _, row in top_year.iterrows():
@@ -429,16 +457,17 @@ def main():
             })
             
         st.markdown(f"### 🏆 {sel_year} Yılının Efsaneleri")
-        display_movie_cards(top_year_list, col_count=4)
+        if top_year_list:
+            display_movie_cards(top_year_list, col_count=4)
+        else:
+            st.info("Bu yıl için yeterli veri bulunamadı.")
 
-    # 3. SEKME: TÜR KEŞFİ
+    # 3. SEKME: TÜR KEŞFİ (ÖN HESAPLI - ÇOK HIZLI)
     with tab3:
-        all_genres = sorted(list(set([g for sublist in df['GENRES'].dropna().str.split('|') for g in sublist])))
         sel_genre = st.selectbox("Hangi türde film arıyorsun?", all_genres, key="genre_select")
         
-        genre_movies = df_filtered[df_filtered["GENRES"].str.contains(sel_genre, na=False)]
-        top_genre = genre_movies.groupby(['TITLE', 'YEAR'])['IMDB_SCORE'].mean().reset_index()
-        top_genre = top_genre.sort_values('IMDB_SCORE', ascending=False).head(8)
+        # Cache'den direkt çek - ANLIK!
+        top_genre = genre_best.get(sel_genre, pd.DataFrame())
         
         top_genre_list = []
         for _, row in top_genre.iterrows():
@@ -450,7 +479,10 @@ def main():
             })
             
         st.markdown(f"### 🎭 En İyi {sel_genre} Filmleri")
-        display_movie_cards(top_genre_list, col_count=4)
+        if top_genre_list:
+            display_movie_cards(top_genre_list, col_count=4)
+        else:
+            st.info("Bu tür için yeterli veri bulunamadı.")
 
     # 4. SEKME: ANALİZ
     with tab4:
