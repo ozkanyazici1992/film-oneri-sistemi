@@ -116,6 +116,15 @@ st.markdown("""
         border-radius: 25px;
         padding: 10px 20px;
     }
+    
+    /* Input placeholder ve label gizleme */
+    .stTextInput > label {
+        display: none !important;
+    }
+    
+    .stTextInput > div > div > input::placeholder {
+        color: #888888 !important;
+    }
 
     /* Butonlar */
     .stButton > button {
@@ -143,20 +152,24 @@ st.markdown("""
         height: 50px;
         border-radius: 25px;
         background-color: rgba(255,255,255,0.05);
-        color: #cccccc !important;
+        color: #888888 !important;
         border: 1px solid rgba(255,255,255,0.1);
         padding: 0 20px;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
     }
 
     .stTabs [aria-selected="true"] {
         background-color: #40E0D0 !important;
         color: #000000 !important;
-        font-weight: bold;
+        font-weight: 700 !important;
+        border: 2px solid #40E0D0;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
         background-color: rgba(64, 224, 208, 0.1);
         color: #40E0D0 !important;
+        border-color: #40E0D0;
     }
 
     /* Sidebar */
@@ -413,7 +426,7 @@ def main():
         
         col_search, col_count = st.columns([3, 1])
         with col_search:
-            movie_input = st.text_input("", placeholder="Film adı yazın... (örn: Inception, Matrix)", 
+            movie_input = st.text_input("film_search", placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)", 
                                        label_visibility="collapsed", key="movie_search_input")
         with col_count:
             num_rec = st.selectbox("", [4, 8, 12], index=0, label_visibility="collapsed", 
@@ -470,15 +483,17 @@ def main():
         top_genre = genre_best.get(sel_genre, pd.DataFrame())
         
         top_genre_list = []
+        genre_display_name = sel_genre if sel_genre != "(no genres listed)" else "Türsüz"
+        
         for _, row in top_genre.iterrows():
             top_genre_list.append({
                 "Film": row['TITLE'],
                 "IMDb": row['IMDB_SCORE'],
                 "Yıl": int(row['YEAR']),
-                "Türler": sel_genre
+                "Türler": genre_display_name
             })
             
-        st.markdown(f"### 🎭 En İyi {sel_genre} Filmleri")
+        st.markdown(f"### 🎭 En İyi **{genre_display_name}** Filmleri")
         if top_genre_list:
             display_movie_cards(top_genre_list, col_count=4)
         else:
