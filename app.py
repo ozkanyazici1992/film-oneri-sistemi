@@ -21,17 +21,26 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Modern CSS (Turkuaz & Dark Tema - Glassmorphism)
+# ZORUNLU KOYU TEMA VE HIZLI YÜKLEME İÇİN CSS
 st.markdown("""
 <style>
     /* Google Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
-    /* Genel Sayfa Yapısı */
-    .stApp {
-        background: radial-gradient(circle at top left, #1a2a3a, #000000);
-        color: #e0e0e0;
-        font-family: 'Poppins', sans-serif;
+    /* EN ÖNEMLİ KISIM: Arka Planı Zorla Siyah Yap */
+    [data-testid="stAppViewContainer"] {
+        background-color: #0e1117 !important;
+        background-image: radial-gradient(circle at top left, #1a2a3a, #000000) !important;
+    }
+    
+    [data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
+    }
+
+    /* Genel Yazı Rengi */
+    .stApp, p, h1, h2, h3, h4, h5, h6, span, div {
+        color: #e0e0e0 !important;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     /* Başlık Alanı (Hero Section) */
@@ -43,22 +52,17 @@ st.markdown("""
     }
     
     .main-title {
-        font-size: 3.5rem;
-        font-weight: 700;
+        font-size: 3.5rem !important;
+        font-weight: 700 !important;
         background: linear-gradient(90deg, #40E0D0, #00CED1, #FFFFFF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        background-clip: text;
         text-shadow: 0 0 20px rgba(64, 224, 208, 0.3);
         margin-bottom: 0.5rem;
     }
 
-    .subtitle {
-        font-size: 1.2rem;
-        color: #a0a0a0;
-        font-weight: 300;
-    }
-
-    /* Kart Tasarımı (Glassmorphism) */
+    /* Kart Tasarımı */
     div.movie-card {
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
@@ -76,11 +80,11 @@ st.markdown("""
     }
 
     .card-title {
-        color: #40E0D0;
-        font-size: 1.1rem;
-        font-weight: 600;
+        color: #40E0D0 !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
         margin-bottom: 10px;
-        height: 3.5em; /* Başlıklar için sabit yükseklik */
+        height: 3.5em;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
@@ -89,7 +93,7 @@ st.markdown("""
 
     .card-metric {
         font-size: 0.9rem;
-        color: #cccccc;
+        color: #cccccc !important;
         display: flex;
         justify-content: space-between;
         margin-bottom: 5px;
@@ -97,7 +101,7 @@ st.markdown("""
 
     .score-badge {
         background-color: #40E0D0;
-        color: #000;
+        color: #000 !important;
         padding: 2px 8px;
         border-radius: 12px;
         font-weight: bold;
@@ -106,18 +110,18 @@ st.markdown("""
 
     /* Input Alanları */
     .stTextInput > div > div > input {
-        background-color: rgba(255,255,255,0.05);
-        color: white;
-        border: 1px solid #40E0D0;
+        background-color: rgba(255,255,255,0.05) !important;
+        color: white !important;
+        border: 1px solid #40E0D0 !important;
         border-radius: 25px;
         padding: 10px 20px;
     }
 
     /* Butonlar */
     .stButton > button {
-        background: linear-gradient(45deg, #40E0D0, #008B8B);
-        color: white;
-        border: none;
+        background: linear-gradient(45deg, #40E0D0, #008B8B) !important;
+        color: white !important;
+        border: none !important;
         border-radius: 25px;
         font-weight: 600;
         width: 100%;
@@ -139,7 +143,7 @@ st.markdown("""
         height: 50px;
         border-radius: 25px;
         background-color: rgba(255,255,255,0.05);
-        color: white;
+        color: white !important;
         border: 1px solid rgba(255,255,255,0.1);
         padding: 0 20px;
     }
@@ -152,27 +156,29 @@ st.markdown("""
 
     /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #0a0a0a;
+        background-color: #0a0a0a !important;
         border-right: 1px solid rgba(255,255,255,0.1);
     }
-
+    
+    /* Metrik Rengi */
+    [data-testid="stMetricValue"] {
+        color: #40E0D0 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. VERİ YÜKLEME VE İŞLEME FONKSİYONLARI
+# 2. VERİ YÜKLEME VE İŞLEME (HIZ İÇİN OPTİMİZE EDİLDİ)
 # -----------------------------------------------------------------------------
 
-@st.cache_data(ttl=3600)
+@st.cache_resource(ttl=3600) # cache_resource BÜYÜK FARK YARATIR (HIZLANDIRIR)
 def download_data_from_drive(file_id):
     try:
         url = f"https://drive.google.com/uc?id={file_id}"
         output_file = "movies_imdb_2.csv"
         
-        # Dosya yoksa indir
         if not os.path.exists(output_file):
-            with st.spinner('📥 Film arşivi indiriliyor...'):
-                gdown.download(url, output_file, quiet=False)
+            gdown.download(url, output_file, quiet=False)
         return output_file
     except Exception as e:
         st.error(f"Veri bağlantı hatası: {str(e)}")
@@ -190,12 +196,10 @@ def normalize_title(title):
         if unicodedata.category(c) != 'Mn'
     ).lower().strip()
 
-@st.cache_data(ttl=3600)
+# BU FONKSİYON ARTIK 'cache_resource' KULLANIYOR - ÇOK DAHA HIZLI
+@st.cache_resource(ttl=3600, show_spinner="Veriler işleniyor...")
 def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
     try:
-        loading_placeholder = st.empty()
-        loading_placeholder.info("🚀 CineAI motoru başlatılıyor...")
-        
         df = pd.read_csv(filepath)
         
         # Veri Temizleme
@@ -239,7 +243,6 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
         
-        loading_placeholder.empty()
         return df, df_filtered, user_movie_matrix, movie_similarity_df, normalized_titles_dict
         
     except Exception as e:
@@ -312,29 +315,19 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    # Veri Yükleme Kontrolü
+    # Veri Yükleme
     FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
+    filepath = download_data_from_drive(FILE_ID)
     
-    if 'data_loaded' not in st.session_state:
-        filepath = download_data_from_drive(FILE_ID)
-        if filepath:
+    if filepath:
+        # Spinner ana gövdede görünsün
+        with st.spinner('🚀 CineAI motoru ve veri seti yükleniyor... Bu işlem ilk seferde biraz sürebilir.'):
             df, df_filtered, _, movie_similarity_df, normalized_titles_dict = prepare_data(filepath)
-            if df is not None:
-                st.session_state.df = df
-                st.session_state.df_filtered = df_filtered
-                st.session_state.movie_similarity_df = movie_similarity_df
-                st.session_state.normalized_titles_dict = normalized_titles_dict
-                st.session_state.data_loaded = True
-            else:
-                st.stop()
-        else:
+            
+        if df is None:
             st.stop()
-
-    # Session verilerini al
-    df = st.session_state.df
-    df_filtered = st.session_state.df_filtered
-    movie_similarity_df = st.session_state.movie_similarity_df
-    normalized_titles_dict = st.session_state.normalized_titles_dict
+    else:
+        st.stop()
 
     # --- SIDEBAR (İSTATİSTİKLER) ---
     with st.sidebar:
@@ -357,7 +350,6 @@ def main():
             yaxis=dict(showgrid=False, showticklabels=False),
             showlegend=False
         )
-        # HATA BURADAYDI, DÜZELTİLDİ: fill_color -> fillcolor (Bitişik yazılmalı)
         fig_mini.update_traces(line_color='#40E0D0', fillcolor='rgba(64, 224, 208, 0.2)')
         st.plotly_chart(fig_mini, use_container_width=True)
 
