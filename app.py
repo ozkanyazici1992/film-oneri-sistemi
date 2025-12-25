@@ -235,6 +235,12 @@ st.markdown("""
         font-size: 1rem !important;
     }
     
+    /* Seçili değer */
+    .stSelectbox [data-baseweb="select"] > div {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+    
     .stSelectbox label {
         color: #DAA520 !important;
         font-weight: 600 !important;
@@ -242,19 +248,34 @@ st.markdown("""
         margin-bottom: 10px;
     }
     
-    /* Dropdown menü içeriği */
-    [data-baseweb="select"] > div {
-        background: rgba(40,40,60,0.98) !important;
-        color: #FFFFFF !important;
+    /* Dropdown menü kutusu */
+    [data-baseweb="popover"] {
+        background: rgba(30,30,50,0.98) !important;
     }
     
+    /* Dropdown menü içeriği */
+    [data-baseweb="menu"] {
+        background: rgba(30,30,50,0.98) !important;
+    }
+    
+    [data-baseweb="menu"] > ul {
+        background: rgba(30,30,50,0.98) !important;
+    }
+    
+    /* Seçenekler */
     [role="option"] {
-        background: rgba(40,40,60,0.98) !important;
+        background: rgba(30,30,50,0.98) !important;
         color: #FFFFFF !important;
         font-weight: 500 !important;
+        padding: 12px 16px !important;
     }
     
     [role="option"]:hover {
+        background: rgba(218,165,32,0.4) !important;
+        color: #FFD700 !important;
+    }
+    
+    [aria-selected="true"][role="option"] {
         background: rgba(218,165,32,0.3) !important;
         color: #FFD700 !important;
     }
