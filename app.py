@@ -562,7 +562,7 @@ def main():
             showlegend=False
         )
         fig_mini.update_traces(line_color='#DAA520', fillcolor='rgba(218,165,32,0.3)')
-        st.plotly_chart(fig_mini, use_container_width=True, key="sidebar_chart")
+        st.plotly_chart(fig_mini, width='stretch', key="sidebar_chart")
 
     # Tabs
     tab1, tab2, tab3, tab4 = st.tabs([
@@ -581,7 +581,7 @@ def main():
             movie_input = st.text_input("film_search", placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)",
                                        label_visibility="collapsed", key="movie_search_input")
         with col_count:
-            num_rec = st.selectbox("", [4, 8, 12], index=0, label_visibility="collapsed",
+            num_rec = st.selectbox("Öneri Sayısı", [4, 8, 12], index=0, label_visibility="collapsed",
                                   format_func=lambda x: f"{x} Öneri", key="num_rec_select")
 
         if st.button("🎯 Benzerlerini Keşfet", type="primary", key="search_button"):
@@ -675,7 +675,7 @@ def main():
                 height=400
             )
             fig_bar.update_traces(marker_color='#DAA520')
-            st.plotly_chart(fig_bar, use_container_width=True, key="genre_bar")
+            st.plotly_chart(fig_bar, width='stretch', key="genre_bar")
             
         with col_a2:
             st.markdown("**⭐ IMDb Puan Dağılımı**")
@@ -690,7 +690,7 @@ def main():
                 height=400
             )
             fig_hist.update_traces(marker_color='#FFD700')
-            st.plotly_chart(fig_hist, use_container_width=True, key="score_hist")
+            st.plotly_chart(fig_hist, width='stretch', key="score_hist")
 
 if __name__ == "__main__":
     main()
