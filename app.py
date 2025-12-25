@@ -169,18 +169,20 @@ st.markdown("""
 
     /* INPUT ALANLARI - MODERN */
     .stTextInput > div > div > input {
-        background: rgba(26,26,46,0.6) !important;
-        color: white !important;
-        border: 2px solid rgba(218,165,32,0.3) !important;
+        background: rgba(40,40,60,0.9) !important;
+        color: #FFFFFF !important;
+        border: 2px solid rgba(218,165,32,0.4) !important;
         border-radius: 30px;
         padding: 14px 24px;
         font-size: 1rem;
         transition: all 0.3s;
+        font-weight: 500 !important;
     }
     
     .stTextInput > div > div > input:focus {
         border-color: #DAA520 !important;
-        box-shadow: 0 0 0 3px rgba(218,165,32,0.2) !important;
+        box-shadow: 0 0 0 3px rgba(218,165,32,0.3) !important;
+        background: rgba(50,50,70,1) !important;
     }
     
     .stTextInput > label {
@@ -188,7 +190,8 @@ st.markdown("""
     }
     
     .stTextInput > div > div > input::placeholder {
-        color: #888888 !important;
+        color: #b8b8b8 !important;
+        font-weight: 400 !important;
     }
 
     /* BUTONLAR - GOLD THEME */
@@ -214,8 +217,8 @@ st.markdown("""
 
     /* SELECTBOX - PREMIUM */
     .stSelectbox > div > div {
-        background: rgba(26,26,46,0.6) !important;
-        border: 2px solid rgba(218,165,32,0.3) !important;
+        background: rgba(40,40,60,0.95) !important;
+        border: 2px solid rgba(218,165,32,0.4) !important;
         border-radius: 20px;
         padding: 10px 16px;
         transition: all 0.3s;
@@ -223,19 +226,37 @@ st.markdown("""
     
     .stSelectbox > div > div:hover {
         border-color: #DAA520 !important;
+        background: rgba(50,50,70,1) !important;
     }
     
     .stSelectbox > div > div > div {
         color: #FFFFFF !important;
-        font-weight: 500 !important;
-        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
     }
     
     .stSelectbox label {
-        color: #b8b8b8 !important;
+        color: #DAA520 !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        margin-bottom: 10px;
+    }
+    
+    /* Dropdown menü içeriği */
+    [data-baseweb="select"] > div {
+        background: rgba(40,40,60,0.98) !important;
+        color: #FFFFFF !important;
+    }
+    
+    [role="option"] {
+        background: rgba(40,40,60,0.98) !important;
+        color: #FFFFFF !important;
         font-weight: 500 !important;
-        font-size: 0.9rem !important;
-        margin-bottom: 8px;
+    }
+    
+    [role="option"]:hover {
+        background: rgba(218,165,32,0.3) !important;
+        color: #FFD700 !important;
     }
 
     /* TABS - SİNEMATİK */
@@ -660,16 +681,4 @@ def main():
             st.markdown("**⭐ IMDb Puan Dağılımı**")
             fig_hist = px.histogram(df_filtered, x='IMDB_SCORE', nbins=25)
             fig_hist.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='white'),
-                xaxis_title="IMDb Puanı",
-                yaxis_title="Film Sayısı",
-                bargap=0.1,
-                height=400
-            )
-            fig_hist.update_traces(marker_color='#FFD700')
-            st.plotly_chart(fig_hist, use_container_width=True, key="score_hist")
-
-if __name__ == "__main__":
-    main()
+                paper_bgcolor='rgba(0,0,0,0
