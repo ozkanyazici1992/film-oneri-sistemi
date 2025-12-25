@@ -681,4 +681,16 @@ def main():
             st.markdown("**⭐ IMDb Puan Dağılımı**")
             fig_hist = px.histogram(df_filtered, x='IMDB_SCORE', nbins=25)
             fig_hist.update_layout(
-                paper_bgcolor='rgba(0,0,0,0
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                xaxis_title="IMDb Puanı",
+                yaxis_title="Film Sayısı",
+                bargap=0.1,
+                height=400
+            )
+            fig_hist.update_traces(marker_color='#FFD700')
+            st.plotly_chart(fig_hist, use_container_width=True, key="score_hist")
+
+if __name__ == "__main__":
+    main()
