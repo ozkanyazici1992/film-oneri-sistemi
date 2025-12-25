@@ -141,6 +141,36 @@ st.markdown("""
         opacity: 0.9;
         box-shadow: 0 0 15px rgba(64, 224, 208, 0.5);
     }
+    
+    /* Selectbox (Dropdown) Stilleri */
+    .stSelectbox > div > div {
+        background-color: rgba(50, 50, 50, 0.8) !important;
+        border: 1px solid #40E0D0 !important;
+        border-radius: 15px;
+        padding: 8px 12px;
+    }
+    
+    .stSelectbox > div > div > div {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
+    }
+    
+    .stSelectbox label {
+        color: #cccccc !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Selectbox dropdown menü */
+    [data-baseweb="popover"] {
+        background-color: rgba(30, 30, 30, 0.95) !important;
+    }
+    
+    [data-baseweb="select"] > div {
+        background-color: rgba(50, 50, 50, 0.8) !important;
+        color: white !important;
+        font-weight: 700 !important;
+    }
 
     /* Tablar */
     .stTabs [data-baseweb="tab-list"] {
@@ -268,6 +298,9 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         # Tür listesi ve en iyi filmleri
         all_genres = sorted(list(set([g for sublist in df['GENRES'].dropna().str.split('|') for g in sublist])))
+        # "(no genres listed)" varsa kaldır
+        all_genres = [g for g in all_genres if g != "(no genres listed)"]
+        
         genre_best = {}
         for genre in all_genres:
             genre_data = df_filtered[df_filtered["GENRES"].str.contains(genre, na=False)]
@@ -429,7 +462,7 @@ def main():
             movie_input = st.text_input("film_search", placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)", 
                                        label_visibility="collapsed", key="movie_search_input")
         with col_count:
-            num_rec = st.selectbox("", [4, 8, 12], index=0, label_visibility="collapsed", 
+            num_rec = st.selectbox("öneri_sayısı", [4, 8, 12], index=0, label_visibility="collapsed", 
                                   format_func=lambda x: f"{x} Öneri", key="num_rec_select")
 
         if st.button("Bana Benzerlerini Bul", type="primary", key="search_button"):
