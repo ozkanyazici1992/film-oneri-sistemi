@@ -52,12 +52,12 @@ st.markdown("""
     /* HERO SECTION */
     .hero-container {
         text-align: center;
-        padding: 2rem 0 1.5rem 0; /* Padding azaltıldı */
+        padding: 2rem 0 1.5rem 0;
         border-bottom: 1px solid linear-gradient(90deg, transparent, #E50914, transparent);
     }
     
     .main-title {
-        font-size: 4rem !important; /* Biraz küçüldü */
+        font-size: 4rem !important;
         background: linear-gradient(to bottom, #FFD700 0%, #FDB931 50%, #C6930A 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -75,12 +75,12 @@ st.markdown("""
         opacity: 0.9;
     }
 
-    /* --- SEÇİLEN FİLM PANELİ (KOMPAKT VERSİYON) --- */
+    /* --- SEÇİLEN FİLM PANELİ (KOMPAKT) --- */
     .selected-movie-info {
         background: rgba(15, 15, 15, 0.95);
         border: 1px solid #333;
-        border-top: 3px solid #E50914; /* Çizgi inceldi */
-        padding: 15px 20px; /* Boşluklar ciddi oranda azaltıldı */
+        border-top: 3px solid #E50914;
+        padding: 15px 20px;
         border-radius: 10px;
         margin-bottom: 25px;
         box-shadow: 0 10px 40px rgba(0,0,0,0.8);
@@ -91,14 +91,14 @@ st.markdown("""
     .info-label {
         color: #E50914 !important;
         font-weight: 700;
-        font-size: 0.75rem; /* Küçüldü */
+        font-size: 0.75rem;
         letter-spacing: 2px;
         margin-bottom: 2px;
     }
     
     .info-title {
         font-family: 'Bebas Neue', cursive !important;
-        font-size: 2.2rem !important; /* 3rem'den 2.2rem'e düştü */
+        font-size: 2.2rem !important;
         color: #ffffff !important;
         margin-bottom: 8px;
         text-shadow: 2px 2px 5px #000;
@@ -111,7 +111,7 @@ st.markdown("""
         gap: 15px;
         justify-content: center;
         align-items: center;
-        font-size: 0.9rem; /* Küçüldü */
+        font-size: 0.9rem;
         color: #ffffff !important;
         margin-bottom: 10px;
         font-weight: 600;
@@ -121,7 +121,7 @@ st.markdown("""
         background: rgba(255, 215, 0, 0.1);
         border: 1px solid rgba(255, 215, 0, 0.5);
         color: #FFD700 !important;
-        padding: 2px 12px; /* Padding küçüldü */
+        padding: 2px 12px;
         border-radius: 20px;
         font-size: 0.85rem;
         font-weight: 700;
@@ -129,7 +129,7 @@ st.markdown("""
 
     .ai-description {
         color: #cccccc !important;
-        font-size: 0.9rem !important; /* Küçüldü */
+        font-size: 0.9rem !important;
         max-width: 750px;
         margin: 0 auto;
         line-height: 1.4;
@@ -384,7 +384,8 @@ def display_cards(movies):
             </div>
             """, unsafe_allow_html=True)
             
-            if st.button(f"İNCELE & BENZERLERİ", key=f"btn_{i}", use_container_width=True):
+            # GÜNCELLENEN BUTON METNİ
+            if st.button(f"BU FİLME GÖRE ÖNER", key=f"btn_{i}", use_container_width=True):
                 st.session_state.selected_movie_final = m['Title']
                 st.session_state.candidates = []
                 st.rerun()
