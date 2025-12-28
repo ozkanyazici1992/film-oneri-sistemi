@@ -6,9 +6,10 @@ import difflib
 import gdown
 import os
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import MinMaxScaler # Ölçeklendirme için eklendi
 
 # -----------------------------------------------------------------------------
-# 1. SAYFA YAPILANDIRMASI VE YÜKSEK KONTRASTLI SİNEMATİK CSS
+# 1. SAYFA YAPILANDIRMASI VE ULTRA CINEMATIC CSS
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="MovieMind AI",
@@ -32,16 +33,15 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* --- TEMEL YAZI AYARLARI (GÜÇLENDİRİLDİ) --- */
+    /* --- TEMEL YAZI AYARLARI --- */
     .stApp, p, span, div, label {
-        color: #ffffff !important; /* TAM BEYAZ */
+        color: #ffffff !important;
         font-family: 'Montserrat', sans-serif !important;
         font-size: 0.95rem !important;
-        font-weight: 500 !important; /* DAHA KALIN */
+        font-weight: 500 !important;
         line-height: 1.5 !important;
     }
     
-    /* BAŞLIKLAR */
     h1, h2, h3, h4 {
         font-family: 'Bebas Neue', cursive !important;
         color: #FFD700 !important;
@@ -64,21 +64,21 @@ st.markdown("""
         -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 20px rgba(253, 185, 49, 0.6));
         margin-bottom: 10px;
-        font-weight: 900 !important; /* EKSTRA KALIN */
+        font-weight: 900 !important;
     }
     
     .subtitle {
         color: #f0f0f0 !important;
         font-size: 1.2rem !important;
-        font-weight: 600 !important; /* DAHA BELİRGİN */
+        font-weight: 600 !important;
         letter-spacing: 3px;
         text-transform: uppercase;
-        opacity: 1; /* TAM GÖRÜNÜR */
+        opacity: 1;
     }
 
-    /* SEÇİLEN FİLM PANELİ (DAHA KOYU ARKA PLAN) */
+    /* SEÇİLEN FİLM PANELİ */
     .selected-movie-info {
-        background: rgba(10, 10, 10, 0.95); /* DAHA OPAK */
+        background: rgba(10, 10, 10, 0.95);
         border: 1px solid #444;
         border-top: 5px solid #E50914;
         padding: 30px;
@@ -127,9 +127,9 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
     }
 
-    /* KART TASARIMI (DAHA NET) */
+    /* KART TASARIMI */
     div.movie-card {
-        background: #111111; /* KOYU VE NET */
+        background: #111111;
         border: 1px solid #444;
         border-radius: 10px 10px 0 0;
         padding: 16px; 
@@ -159,7 +159,7 @@ st.markdown("""
         color: #ffffff !important;
         font-family: 'Montserrat', sans-serif !important;
         font-size: 1rem !important;
-        font-weight: 800 !important; /* KALIN */
+        font-weight: 800 !important;
         margin-bottom: 5px;
         height: 2.8em;
         overflow: hidden;
@@ -173,7 +173,7 @@ st.markdown("""
 
     .card-meta {
         font-size: 0.9rem !important;
-        color: #dddddd !important; /* AÇIK GRİ */
+        color: #dddddd !important;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -210,7 +210,7 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0,0,0,0.8);
     }
 
-    /* BUTONLAR (PARLAK) */
+    /* BUTONLAR */
     div[data-testid="column"] button {
         background: #1a1a1a !important;
         border: 1px solid #555 !important;
@@ -233,9 +233,9 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(229, 9, 20, 0.6);
     }
 
-    /* INPUT ALANI (YÜKSEK KONTRAST) */
+    /* INPUT ALANI */
     .stTextInput input {
-        background-color: #222 !important; /* Biraz daha açık */
+        background-color: #222 !important;
         border: 2px solid #555 !important;
         color: #ffffff !important;
         border-radius: 50px !important;
@@ -245,12 +245,11 @@ st.markdown("""
     }
     
     .stTextInput input:focus {
-        border-color: #FFD700 !important; /* Altın rengi focus */
+        border-color: #FFD700 !important;
         box-shadow: 0 0 20px rgba(255, 215, 0, 0.4) !important;
         background-color: #000 !important;
     }
     
-    /* Placeholder rengi */
     .stTextInput input::placeholder {
         color: #888 !important;
         font-weight: 500 !important;
@@ -272,7 +271,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. VERİ MOTORU
+# 2. VERİ MOTORU (PUAN KALİBRASYONU EKLENDİ)
 # -----------------------------------------------------------------------------
 
 @st.cache_resource(ttl=3600)
@@ -301,7 +300,6 @@ def prepare_data(filepath, min_votes=2500):
         df.dropna(subset=["TITLE", "YEAR", "RATING"], inplace=True)
         df["YEAR"] = df["YEAR"].astype(int)
         
-        # Puan dönüşümü (10 üzerinden)
         df["RATING_10"] = df["RATING"] * 2
         
         movie_stats = df.groupby("TITLE", sort=False).agg({
@@ -331,8 +329,37 @@ def find_candidates(query, titles_dict):
 
 def get_recs(sim_df, meta, title):
     if title not in sim_df.columns: return []
-    scores = sim_df[title].drop(title).nlargest(5)
-    return [{"Title": m, "Score": s, **meta.get(m, {})} for m, s in scores.items()]
+    
+    # Ham skorları al
+    raw_scores = sim_df[title].drop(title).nlargest(5)
+    
+    # --- SKOR KALİBRASYONU (YENİ) ---
+    # Ham skorları (örn: 0.15 - 0.05) kullanıcı dostu yüzdelere (örn: %98 - %75) dönüştürüyoruz.
+    # Bu sadece görsel bir düzeltmedir, sıralamayı değiştirmez.
+    
+    min_display = 0.75  # En kötü öneri %75 gözüksün
+    max_display = 0.98  # En iyi öneri %98 gözüksün
+    
+    # Eğer skorlar varsa normalize et
+    if not raw_scores.empty:
+        min_raw = raw_scores.min()
+        max_raw = raw_scores.max()
+        
+        # Eğer tüm skorlar aynıysa veya tek sonuç varsa
+        if max_raw == min_raw:
+            calibrated_scores = {k: 0.95 for k, v in raw_scores.items()} # Hepsine %95 ver
+        else:
+            calibrated_scores = {}
+            for m, s in raw_scores.items():
+                # Min-Max Normalizasyon formülü
+                normalized = (s - min_raw) / (max_raw - min_raw)
+                # İstenilen aralığa (75-98) yayma
+                final_score = normalized * (max_display - min_display) + min_display
+                calibrated_scores[m] = final_score
+    else:
+        calibrated_scores = {}
+
+    return [{"Title": m, "Score": calibrated_scores[m], **meta.get(m, {})} for m in raw_scores.index]
 
 # -----------------------------------------------------------------------------
 # 3. KART GÖRÜNÜMÜ
@@ -426,7 +453,6 @@ def main():
         info = st.session_state.meta.get(sel_movie, {})
         current_rating = info.get('RATING', 0)
         
-        # SEÇİLEN FİLM PANELİ
         st.markdown(f"""
         <div class="selected-movie-info">
             <div class="info-label">ŞU AN İNCELENEN YAPIM</div>
