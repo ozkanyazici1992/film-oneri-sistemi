@@ -8,7 +8,7 @@ import os
 from sklearn.metrics.pairwise import cosine_similarity
 
 # -----------------------------------------------------------------------------
-# 1. SAYFA YAPILANDIRMASI VE TASARIM
+# 1. SAYFA YAPILANDIRMASI VE YENİ PREMIUM CSS
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="MovieMind AI",
@@ -19,11 +19,11 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Cinzel:wght@700&display=swap');
 
-    /* ARKA PLAN */
+    /* --- GENEL TEMALAR --- */
     [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        background: radial-gradient(circle at 50% 10%, #1e1e24 0%, #0b0b0f 100%);
         background-attachment: fixed;
     }
     
@@ -31,161 +31,155 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* GENEL YAZI TİPİ */
-    .stApp, p, span, div, label, button {
-        color: #e0e0e0 !important;
-        font-family: 'Inter', sans-serif !important;
+    /* YAZI TİPLERİ VE RENKLERİ (BEYAZ YOK) */
+    .stApp, p, span, div, label {
+        color: #b0b0b0 !important; /* Gümüş Grisi */
+        font-family: 'Poppins', sans-serif !important;
     }
     
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Playfair Display', serif !important;
-        color: #ffffff !important;
-    }
-
-    /* HERO SECTION (BAŞLIK ALANI) */
-    .hero-container {
-        text-align: center;
-        padding: 4rem 0 3rem 0;
-        background: radial-gradient(circle at center, rgba(120, 80, 255, 0.15) 0%, transparent 70%);
-        margin-bottom: 2rem;
-    }
-    
-    .main-title {
-        font-size: 5rem !important;
-        font-weight: 900 !important;
-        background: linear-gradient(to right, #00c6ff, #0072ff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
-        letter-spacing: -2px;
-    }
-    
-    .subtitle {
-        font-size: 1.4rem !important;
-        color: #b0b0d0 !important;
-        font-weight: 300 !important;
+        font-family: 'Cinzel', serif !important;
+        color: #d4af37 !important; /* Metalik Altın */
+        text-transform: uppercase;
         letter-spacing: 1px;
     }
 
-    /* FİLM KARTLARI */
+    /* HERO SECTION */
+    .hero-container {
+        text-align: center;
+        padding: 3rem 0;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+    }
+    
+    .main-title {
+        font-size: 4rem !important;
+        background: linear-gradient(to bottom, #d4af37, #aa8c2c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0px 4px 10px rgba(0,0,0,0.5);
+    }
+
+    /* SEÇİLEN FİLM BİLGİ PANELİ (YENİ) */
+    .selected-movie-info {
+        background: linear-gradient(90deg, rgba(20,20,30,0.9), rgba(40,40,50,0.9));
+        border-left: 5px solid #d4af37;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .info-title {
+        font-size: 2rem !important;
+        color: #f0f0f0 !important; /* Çok açık gri, beyaz değil */
+        margin-bottom: 10px;
+    }
+    
+    .info-meta {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        font-size: 1rem;
+        color: #d4af37 !important;
+    }
+
+    /* ÖNERİ KARTLARI (KÜÇÜK YAZILAR) */
     div.movie-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 16px 16px 0 0;
-        padding: 24px;
-        height: 240px;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        position: relative;
+        background: rgba(30, 30, 40, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px 12px 0 0;
+        padding: 15px; /* Padding küçüldü */
+        height: 190px; /* Kart boyu küçüldü */
+        transition: all 0.3s ease;
     }
 
     div.movie-card:hover {
-        border-color: #00c6ff;
-        box-shadow: 0 10px 30px rgba(0, 198, 255, 0.15);
+        background: rgba(40, 40, 55, 0.8);
+        border-color: #d4af37;
+        transform: translateY(-5px);
     }
 
     .card-title {
-        color: #ffffff !important;
-        font-size: 1.25rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 12px;
-        height: 3.2em;
+        color: #e0e0e0 !important;
+        font-size: 0.95rem !important; /* Yazı küçüldü */
+        font-weight: 600 !important;
+        margin-bottom: 8px;
+        height: 3em;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         line-height: 1.3;
+        font-family: 'Poppins', sans-serif !important;
+        text-transform: none;
     }
 
-    .meta-row {
+    .card-meta {
+        font-size: 0.75rem !important; /* Yazı küçüldü */
+        color: #888 !important;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 5px;
     }
 
-    .year-badge {
-        font-size: 0.9rem;
-        color: #a0a0c0 !important;
-        background: rgba(255,255,255,0.1);
-        padding: 2px 8px;
-        border-radius: 6px;
+    .card-genre {
+        font-size: 0.7rem !important; /* Yazı küçüldü */
+        color: #666 !important;
+        font-style: italic;
     }
 
-    .score-badge {
-        background: linear-gradient(135deg, #00c6ff, #0072ff);
-        color: white !important;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.85rem;
-        box-shadow: 0 2px 10px rgba(0, 114, 255, 0.3);
+    .match-badge {
+        font-size: 0.7rem;
+        color: #d4af37 !important;
+        font-weight: bold;
+        margin-top: 8px;
+        text-align: right;
     }
 
-    .genre-text {
-        font-size: 0.8rem;
-        color: #8888aa !important;
-        margin-bottom: 10px;
-    }
-    
-    .match-rate {
-        font-size: 0.85rem;
-        color: #00c6ff !important;
-        font-weight: 600;
-        margin-top: auto;
-    }
-
-    /* ETKİLEŞİM BUTONLARI (KART ALTI) */
+    /* ETKİLEŞİM BUTONLARI */
     div[data-testid="column"] button {
-        background: rgba(0, 198, 255, 0.1) !important;
-        border: 1px solid rgba(0, 198, 255, 0.3) !important;
-        color: #00c6ff !important;
-        border-radius: 0 0 16px 16px !important;
-        margin-top: -5px !important; /* Karta yapışık olsun */
-        transition: all 0.3s !important;
-        font-weight: 600 !important;
+        background: rgba(212, 175, 55, 0.1) !important;
+        border: 1px solid rgba(212, 175, 55, 0.2) !important;
+        color: #d4af37 !important;
+        border-radius: 0 0 12px 12px !important;
+        font-size: 0.8rem !important;
+        padding: 5px 10px !important;
+        margin-top: -8px !important;
+        transition: 0.3s !important;
     }
     
     div[data-testid="column"] button:hover {
-        background: linear-gradient(90deg, #00c6ff, #0072ff) !important;
-        color: white !important;
-        border-color: transparent !important;
-        transform: translateY(2px);
+        background: #d4af37 !important;
+        color: #000 !important;
     }
 
-    /* ARAMA ÇUBUĞU */
+    /* INPUT ALANI */
     .stTextInput input {
-        border-radius: 50px !important;
-        padding: 18px 25px !important;
-        background: rgba(0, 0, 0, 0.3) !important;
-        border: 2px solid rgba(255, 255, 255, 0.1) !important;
-        font-size: 1.1rem !important;
-        color: white !important;
+        background: rgba(255,255,255,0.05) !important;
+        border: 1px solid #444 !important;
+        color: #d4af37 !important;
+        border-radius: 8px !important;
     }
     
     .stTextInput input:focus {
-        border-color: #00c6ff !important;
-        box-shadow: 0 0 20px rgba(0, 198, 255, 0.2) !important;
+        border-color: #d4af37 !important;
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.2) !important;
     }
 
-    /* ADAY BUTONLARI (ÜST KISIM) */
-    .candidate-btn button {
-        background: transparent !important;
-        border: 1px solid rgba(255,255,255,0.2) !important;
-        color: #cccccc !important;
-        border-radius: 30px !important;
+    /* ADAY BUTONLARI */
+    .element-container button {
+        border-radius: 20px;
     }
-    
-    .candidate-btn button:hover {
-        border-color: #00c6ff !important;
-        color: white !important;
-    }
-
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. MOTOR (HESAPLAMA & VERİ)
+# 2. VERİ MOTORU
 # -----------------------------------------------------------------------------
 
 @st.cache_resource(ttl=3600)
@@ -197,7 +191,6 @@ def download_data_from_drive(file_id):
             gdown.download(url, output_file, quiet=False)
         return output_file
     except Exception as e:
-        st.error(f"Veri bağlantı hatası: {str(e)}")
         return None
 
 @st.cache_data
@@ -208,207 +201,158 @@ def normalize_title(title):
     ).lower().strip()
 
 @st.cache_resource(ttl=3600, show_spinner=False)
-def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
+def prepare_data(filepath, min_votes=2500):
     try:
         df = pd.read_csv(filepath, low_memory=False)
         df[["TITLE", "YEAR"]] = df["TITLE"].str.extract(r"^(.*) \((\d{4})\)$")
         df.dropna(subset=["TITLE", "YEAR", "RATING"], inplace=True)
         df["YEAR"] = df["YEAR"].astype(int)
-        df["RATING_10"] = df["RATING"] * 2
         
-        vote_counts = df.groupby("TITLE", sort=False)["RATING"].count()
-        df["NUM_VOTES"] = df["TITLE"].map(vote_counts)
-        mean_rating = df["RATING_10"].mean()
-        
+        # Meta Veri Sözlüğü (Hızlı Erişim)
         movie_stats = df.groupby("TITLE", sort=False).agg({
-            "RATING_10": "mean",
-            "NUM_VOTES": "max",
+            "RATING": "mean",
             "YEAR": "first",
             "GENRES": "first"
         }).reset_index()
         
-        movie_stats["IMDB_SCORE"] = (
-            (movie_stats["NUM_VOTES"] / (movie_stats["NUM_VOTES"] + min_votes)) * movie_stats["RATING_10"] +
-            (min_votes / (movie_stats["NUM_VOTES"] + min_votes)) * mean_rating
-        )
-        
-        movie_metadata = movie_stats.set_index("TITLE")[["IMDB_SCORE", "YEAR", "GENRES"]].to_dict('index')
+        movie_metadata = movie_stats.set_index("TITLE").to_dict('index')
 
-        popular_titles = vote_counts[vote_counts >= vote_threshold].index
-        df_filtered = df[df["TITLE"].isin(popular_titles)].copy()
+        # Benzerlik Matrisi (Basitleştirilmiş)
+        vote_counts = df.groupby("TITLE")["RATING"].count()
+        popular = vote_counts[vote_counts >= 1000].index
+        df_filtered = df[df["TITLE"].isin(popular)]
         
-        user_movie_matrix = df_filtered.pivot_table(
-            index="USERID", columns="TITLE", values="RATING_10", aggfunc='mean'
-        ).fillna(0)
-        
-        movie_similarity_df = pd.DataFrame(
-            cosine_similarity(user_movie_matrix.T),
-            index=user_movie_matrix.columns,
-            columns=user_movie_matrix.columns
-        )
-        
+        user_movie_matrix = df_filtered.pivot_table(index="USERID", columns="TITLE", values="RATING").fillna(0)
+        movie_similarity_df = pd.DataFrame(cosine_similarity(user_movie_matrix.T), index=user_movie_matrix.columns, columns=user_movie_matrix.columns)
         normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
         
         return movie_similarity_df, normalized_titles_dict, movie_metadata
-        
-    except Exception as e:
+    except:
         return None, None, None
 
-def find_movie_candidates(query, _normalized_titles_dict, top_n=5):
-    normalized_input = normalize_title(query)
-    close_matches = difflib.get_close_matches(normalized_input, _normalized_titles_dict.keys(), n=top_n, cutoff=0.3)
-    return [_normalized_titles_dict[m] for m in close_matches]
+def find_candidates(query, titles_dict):
+    norm = normalize_title(query)
+    matches = difflib.get_close_matches(norm, titles_dict.keys(), n=5, cutoff=0.3)
+    return [titles_dict[m] for m in matches]
 
-@st.cache_data
-def get_recommendations_for_selected(_similarity_df, _movie_metadata, selected_movie, top_n):
-    if selected_movie not in _similarity_df.columns:
-        return None
-    scores = _similarity_df[selected_movie].drop(labels=[selected_movie], errors="ignore")
-    recommendations = scores.nlargest(top_n)
-    
-    rec_data = []
-    for movie, similarity_score in recommendations.items():
-        if movie in _movie_metadata:
-            meta = _movie_metadata[movie]
-            rec_data.append({
-                "Film": movie,
-                "Benzerlik": float(similarity_score),
-                "IMDb": float(meta['IMDB_SCORE']),
-                "Yıl": int(meta['YEAR']),
-                "Türler": meta['GENRES'].replace("|", ", ")
-            })
-    return rec_data
+def get_recs(sim_df, meta, title):
+    if title not in sim_df.columns: return []
+    scores = sim_df[title].drop(title).nlargest(5)
+    return [{"Title": m, "Score": s, **meta.get(m, {})} for m, s in scores.items()]
 
 # -----------------------------------------------------------------------------
-# 3. ETKİLEŞİMLİ KARTLAR (DÖNGÜ MEKANİZMASI)
+# 3. KART GÖRÜNÜMÜ
 # -----------------------------------------------------------------------------
-def display_interactive_cards(movies_data, col_count=5):
-    cols = st.columns(col_count)
-    
-    for idx, movie in enumerate(movies_data):
-        with cols[idx % col_count]:
-            # Görsel HTML Kısmı
+def display_cards(movies):
+    cols = st.columns(5)
+    for i, m in enumerate(movies):
+        with cols[i]:
+            # HTML Kart
             st.markdown(f"""
             <div class="movie-card">
-                <div style="font-size: 3.5rem; text-align: center; margin-bottom: 15px; text-shadow: 0 0 20px rgba(255,255,255,0.2);">🎬</div>
-                <div class="card-title" title="{movie['Film']}">{movie['Film']}</div>
-                <div class="meta-row">
-                    <span class="year-badge">{movie['Yıl']}</span>
-                    <span class="score-badge">{movie['IMDb']:.1f}</span>
+                <div style="text-align:center; font-size:2rem; margin-bottom:10px;">🎥</div>
+                <div class="card-title" title="{m['Title']}">{m['Title']}</div>
+                <div class="card-meta">
+                    <span>📅 {int(m['YEAR']) if 'YEAR' in m else '-'}</span>
+                    <span style="color:#d4af37;">★ {m['RATING']:.1f}</span>
                 </div>
-                <div class="genre-text">
-                    {movie.get('Türler', 'Genel')[:25]}...
+                <div class="card-genre">
+                    {m.get('GENRES', '').replace('|', ', ')[:30]}...
                 </div>
-                <div class="match-rate">
-                    %{int(movie["Benzerlik"]*100)} Eşleşme
+                <div class="match-badge">
+                    %{int(m['Score']*100)} UYUMLU
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
             # Etkileşim Butonu
-            if st.button(f"Bunu Analiz Et ⚡", key=f"rec_{idx}", use_container_width=True):
-                st.session_state.selected_movie_final = movie['Film']
-                st.session_state.candidates = [] # Temiz sayfa
+            if st.button(f"Analiz Et ➜", key=f"btn_{i}", use_container_width=True):
+                st.session_state.selected_movie_final = m['Title']
+                st.session_state.candidates = []
                 st.rerun()
 
 # -----------------------------------------------------------------------------
-# 4. ANA UYGULAMA
+# 4. ANA AKIŞ
 # -----------------------------------------------------------------------------
-
 def main():
-    # Session State Başlatma
     if 'data_loaded' not in st.session_state:
         st.session_state.data_loaded = False
-        st.session_state.movie_similarity_df = None
-        st.session_state.normalized_titles_dict = None
-        st.session_state.movie_metadata = None
-    
-    if 'candidates' not in st.session_state:
-        st.session_state.candidates = []
     if 'selected_movie_final' not in st.session_state:
         st.session_state.selected_movie_final = None
+    if 'candidates' not in st.session_state:
+        st.session_state.candidates = []
 
-    # Hero Alanı
+    # Hero
     st.markdown("""
         <div class="hero-container">
             <h1 class="main-title">MovieMind AI</h1>
-            <p class="subtitle">Yapay Zeka Tabanlı Akıllı Tavsiye Motoru</p>
+            <p style="color:#888 !important; font-size:1rem;">PREMIUM SİNEMA ZEKA MOTORU</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Veri Yükleme (Sessiz)
+    # Load Data
     if not st.session_state.data_loaded:
-        with st.spinner('🧠 Nöral ağlar yükleniyor...'):
-            FILE_ID = "1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS"
-            filepath = download_data_from_drive(FILE_ID)
-            if filepath:
-                result = prepare_data(filepath)
-                if result[0] is not None:
-                    (st.session_state.movie_similarity_df, 
-                     st.session_state.normalized_titles_dict, 
-                     st.session_state.movie_metadata) = result
+        with st.spinner('Sistem Başlatılıyor...'):
+            path = download_data_from_drive("1gl_iJXRyEaSzhHlgfBUdTzQZMer4gdsS")
+            if path:
+                sim, titles, meta = prepare_data(path)
+                if sim is not None:
+                    st.session_state.sim = sim
+                    st.session_state.titles = titles
+                    st.session_state.meta = meta
                     st.session_state.data_loaded = True
                     st.rerun()
-                else:
-                    st.error("Sistem başlatılamadı.")
-                    st.stop()
-            else:
-                st.stop()
 
-    # --- ANA ARAYÜZ (TEK SAYFA) ---
-    
-    # 1. ARAMA MOTORU
-    c1, c2, c3 = st.columns([1, 6, 1]) # Ortalamak için
+    if not st.session_state.data_loaded: st.stop()
+
+    # Arama
+    c1, c2, c3 = st.columns([1, 6, 1])
     with c2:
-        search_query = st.text_input("movie_search", 
-                                   placeholder="Hangi filmi sevdiniz? (Örn: Matrix, Interstellar...)", 
-                                   label_visibility="collapsed")
-        
-        # Enter'a basıldığında veya buton kullanıldığında
-        if search_query:
-            # Sadece yeni bir arama yapıldıysa adayları güncelle
-            if 'last_query' not in st.session_state or st.session_state.last_query != search_query:
-                st.session_state.candidates = find_movie_candidates(search_query, st.session_state.normalized_titles_dict)
-                st.session_state.last_query = search_query
-                st.session_state.selected_movie_final = None # Yeni aramada seçimi sıfırla
+        query = st.text_input("ara", placeholder="Film ara... (örn: Godfather, Matrix)", label_visibility="collapsed")
+        if query and ('last_q' not in st.session_state or st.session_state.last_q != query):
+            st.session_state.candidates = find_candidates(query, st.session_state.titles)
+            st.session_state.last_q = query
+            st.session_state.selected_movie_final = None # Reset selection on new search
 
-    # 2. ADAY FİLMLER (Sadece arama yapıldığında ve seçim yoksa görünür)
+    # Adaylar
     if st.session_state.candidates and not st.session_state.selected_movie_final:
         st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"<div style='text-align:center; color:#888; margin-bottom:15px;'>🤔 <b>'{search_query}'</b> için bulduklarımız:</div>", unsafe_allow_html=True)
-        
-        # Butonları ortala
         cols = st.columns(len(st.session_state.candidates))
-        for i, movie in enumerate(st.session_state.candidates):
-            # Özel stil sınıfı eklemek için container kullanabiliriz ama basit tutalım
-            if cols[i].button(movie, key=f"cand_{i}", use_container_width=True):
-                st.session_state.selected_movie_final = movie
-                st.session_state.candidates = [] # Seçim yapıldı, listeyi kaldır
+        for i, cand in enumerate(st.session_state.candidates):
+            if cols[i].button(cand, key=f"cand_{i}"):
+                st.session_state.selected_movie_final = cand
+                st.session_state.candidates = []
                 st.rerun()
 
-    # 3. SONUÇLAR VE ANALİZ
+    # SONUÇ EKRANI
     if st.session_state.selected_movie_final:
-        st.markdown("---")
+        # 1. SEÇİLEN FİLM BİLGİ PANELİ (YENİ ÖZELLİK)
+        sel_movie = st.session_state.selected_movie_final
+        info = st.session_state.meta.get(sel_movie, {})
         
-        # Başlık ve Geri Dönme Hissi
         st.markdown(f"""
-        <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:30px;">
-            <span style="font-size:1.5rem; color:#fff;">Seçiminiz:</span>
-            <span style="font-size:1.5rem; font-weight:bold; color:#00c6ff;">{st.session_state.selected_movie_final}</span>
+        <div class="selected-movie-info">
+            <div style="color:#d4af37; font-size:0.9rem; letter-spacing:2px; margin-bottom:5px;">ŞU AN İNCELENEN</div>
+            <div class="info-title">{sel_movie}</div>
+            <div class="info-meta">
+                <span>📅 {int(info.get('YEAR', 0))}</span>
+                <span>•</span>
+                <span>🎭 {info.get('GENRES', '').replace('|', ', ')}</span>
+                <span>•</span>
+                <span>⭐ {info.get('RATING', 0):.1f} / 10</span>
+            </div>
+            <div style="margin-top:15px; color:#888; font-size:0.85rem; max-width:600px;">
+                Yapay zeka bu filmin genetik kodlarını analiz etti ve aşağıdaki benzer yapımları buldu.
+            </div>
         </div>
         """, unsafe_allow_html=True)
-        
-        recs = get_recommendations_for_selected(
-            st.session_state.movie_similarity_df,
-            st.session_state.movie_metadata,
-            st.session_state.selected_movie_final,
-            5
-        )
-        
+
+        # 2. ÖNERİLER
+        recs = get_recs(st.session_state.sim, st.session_state.meta, sel_movie)
         if recs:
-            display_interactive_cards(recs)
+            display_cards(recs)
         else:
-            st.warning("Bu film için yeterli veri bulunamadı.")
+            st.warning("Veri bulunamadı.")
 
 if __name__ == "__main__":
     main()
