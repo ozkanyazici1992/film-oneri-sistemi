@@ -32,22 +32,22 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* YAZI TİPLERİ - SEO DOSTU VE OKUNAKLI */
+    /* YAZI TİPLERİ */
     .stApp, p, span, div, label {
         color: #e0e0e0 !important;
         font-family: 'Montserrat', sans-serif !important;
         font-size: 0.95rem !important;
     }
     
-    /* BAŞLIKLAR - SİNEMATİK */
+    /* BAŞLIKLAR */
     h1, h2, h3, h4 {
         font-family: 'Bebas Neue', cursive !important;
-        color: #FFD700 !important; /* Oscar Gold */
+        color: #FFD700 !important;
         letter-spacing: 1.5px;
         text-transform: uppercase;
     }
 
-    /* HERO SECTION - RED CARPET STYLE */
+    /* HERO SECTION */
     .hero-container {
         text-align: center;
         padding: 3rem 0 2rem 0;
@@ -72,11 +72,11 @@ st.markdown("""
         opacity: 0.9;
     }
 
-    /* SEÇİLEN FİLM PANELİ - BLOCKBUSTER DETAY */
+    /* SEÇİLEN FİLM PANELİ */
     .selected-movie-info {
         background: rgba(20, 20, 20, 0.8);
         border: 1px solid #333;
-        border-top: 4px solid #E50914; /* Netflix Red Line */
+        border-top: 4px solid #E50914;
         padding: 25px;
         border-radius: 12px;
         margin-bottom: 30px;
@@ -92,7 +92,7 @@ st.markdown("""
     }
     
     .info-label {
-        color: #E50914 !important; /* Kırmızı vurgu */
+        color: #E50914 !important;
         font-weight: 700;
         font-size: 0.8rem;
         letter-spacing: 2px;
@@ -128,7 +128,7 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* ÖNERİ KARTLARI - AFİŞ GÖRÜNÜMÜ */
+    /* ÖNERİ KARTLARI */
     div.movie-card {
         background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
         border: 1px solid #333;
@@ -145,11 +145,10 @@ st.markdown("""
 
     div.movie-card:hover {
         transform: translateY(-5px);
-        border-color: #E50914; /* Hoverda kırmızı sınır */
+        border-color: #E50914;
         box-shadow: 0 10px 30px rgba(229, 9, 20, 0.2);
     }
     
-    /* Kartın üzerine gelince hafif parlaması için */
     div.movie-card::after {
         content: "";
         position: absolute;
@@ -166,7 +165,7 @@ st.markdown("""
     }
 
     .card-title {
-        color: #ffffff !important; /* Tam beyaz */
+        color: #ffffff !important;
         font-family: 'Montserrat', sans-serif !important;
         font-size: 0.9rem !important;
         font-weight: 700 !important;
@@ -216,11 +215,11 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0,0,0,0.5);
     }
 
-    /* ETKİLEŞİM BUTONLARI - CALL TO ACTION */
+    /* BUTONLAR */
     div[data-testid="column"] button {
         background: #1f1f1f !important;
         border: 1px solid #333 !important;
-        color: #E50914 !important; /* Kırmızı yazı */
+        color: #E50914 !important;
         border-radius: 0 0 8px 8px !important;
         font-size: 0.8rem !important;
         font-weight: 700 !important;
@@ -239,12 +238,12 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
     }
 
-    /* INPUT ALANI - GOOGLE SEARCH TARZI AMA DARK */
+    /* INPUT ALANI */
     .stTextInput input {
         background-color: #1a1a1a !important;
         border: 2px solid #333 !important;
         color: #ffffff !important;
-        border-radius: 50px !important; /* Tam yuvarlak */
+        border-radius: 50px !important;
         padding: 12px 20px !important;
         font-size: 1rem !important;
         font-weight: 500 !important;
@@ -344,7 +343,7 @@ def display_cards(movies):
         with cols[i]:
             rating_val = m.get('RATING', 0)
             
-            # Kart Yapısı (HTML)
+            # Kart Yapısı
             st.markdown(f"""
             <div class="movie-card">
                 <div class="match-badge">%{int(m['Score']*100)} UYUM</div>
@@ -400,10 +399,12 @@ def main():
 
     if not st.session_state.data_loaded: st.stop()
 
-    # ARAMA MOTORU
+    # ARAMA MOTORU - GÜNCELLENEN YAZI
     c1, c2, c3 = st.columns([1, 6, 1])
     with c2:
-        query = st.text_input("ara", placeholder="Hangi filmi beğendiniz? (Örn: The Dark Knight)", label_visibility="collapsed")
+        # Placeholder metni "unutulmaz film" vurgusuyla değiştirildi
+        query = st.text_input("ara", placeholder="Etkisinden çıkamadığınız o filmi yazın... (Örn: Inception, The Prestige)", label_visibility="collapsed")
+        
         if query and ('last_q' not in st.session_state or st.session_state.last_q != query):
             st.session_state.candidates = find_candidates(query, st.session_state.titles)
             st.session_state.last_q = query
@@ -436,7 +437,7 @@ def main():
                 <span>{info.get('GENRES', '').replace('|', ' • ')}</span>
                 <span class="highlight-box">IMDb: {current_rating:.1f}</span>
             </div>
-            <div style="color:#aaa; font-size:0.9rem; max-width:700px; margin:0 auto;">
+            <div style="color:#aaa; font-size:0.95rem; max-width:700px; margin:0 auto; line-height:1.5;">
                 Yapay zeka algoritmamız, <b>{sel_movie}</b> filminin genetik kodlarını analiz etti. 
                 Senaryo yapısı, tür özellikleri ve izleyici davranışlarına göre sizin için en iyi 5 alternatifi belirledi.
             </div>
