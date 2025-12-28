@@ -214,71 +214,6 @@ st.markdown("""
         background: linear-gradient(135deg, #FFD700 0%, #DAA520 100%) !important;
     }
 
-    /* SELECTBOX - PREMIUM */
-    .stSelectbox > div > div {
-        background: rgba(40,40,60,0.95) !important;
-        border: 2px solid rgba(218,165,32,0.4) !important;
-        border-radius: 20px;
-        padding: 10px 16px;
-        transition: all 0.3s;
-    }
-    
-    .stSelectbox > div > div:hover {
-        border-color: #DAA520 !important;
-        background: rgba(50,50,70,1) !important;
-    }
-    
-    .stSelectbox > div > div > div {
-        color: #FFFFFF !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-    }
-    
-    /* Seçili değer */
-    .stSelectbox [data-baseweb="select"] > div {
-        color: #FFFFFF !important;
-        font-weight: 600 !important;
-    }
-    
-    .stSelectbox label {
-        color: #DAA520 !important;
-        font-weight: 600 !important;
-        font-size: 1rem !important;
-        margin-bottom: 10px;
-    }
-    
-    /* Dropdown menü kutusu */
-    [data-baseweb="popover"] {
-        background: rgba(30,30,50,0.98) !important;
-    }
-    
-    /* Dropdown menü içeriği */
-    [data-baseweb="menu"] {
-        background: rgba(30,30,50,0.98) !important;
-    }
-    
-    [data-baseweb="menu"] > ul {
-        background: rgba(30,30,50,0.98) !important;
-    }
-    
-    /* Seçenekler */
-    [role="option"] {
-        background: rgba(30,30,50,0.98) !important;
-        color: #FFFFFF !important;
-        font-weight: 500 !important;
-        padding: 12px 16px !important;
-    }
-    
-    [role="option"]:hover {
-        background: rgba(218,165,32,0.4) !important;
-        color: #FFD700 !important;
-    }
-    
-    [aria-selected="true"][role="option"] {
-        background: rgba(218,165,32,0.3) !important;
-        color: #FFD700 !important;
-    }
-
     /* TABS - SİNEMATİK */
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
@@ -426,29 +361,14 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
         
-        # Ön hesaplama - YIL
-        years = df_filtered['YEAR'].unique()
-        year_best = {}
-        for year in years:
-            year_data = df_filtered[df_filtered['YEAR'] == year].groupby(['TITLE', 'GENRES'], sort=False)['IMDB_SCORE'].mean().reset_index()
-            year_best[year] = year_data.nlargest(8, 'IMDB_SCORE')
+        # NOT: Yıl ve Tür bazlı "Best of" hesaplamaları kaldırıldı (Hız artışı için)
         
-        # Ön hesaplama - TÜR
-        all_genres = sorted(list(set([g for sublist in df['GENRES'].dropna().str.split('|') for g in sublist])))
-        all_genres = [g for g in all_genres if g != "(no genres listed)"]
-        
-        genre_best = {}
-        for genre in all_genres:
-            genre_data = df_filtered[df_filtered["GENRES"].str.contains(genre, na=False, regex=False)]
-            genre_top = genre_data.groupby(['TITLE', 'YEAR'], sort=False)['IMDB_SCORE'].mean().reset_index()
-            genre_best[genre] = genre_top.nlargest(8, 'IMDB_SCORE')
-        
-        return df, df_filtered, movie_similarity_df, normalized_titles_dict, year_best, genre_best, all_genres, movie_metadata
+        return df, df_filtered, movie_similarity_df, normalized_titles_dict, movie_metadata
         
     except Exception as e:
         st.error(f"❌ Veri işleme hatası: {str(e)}")
-        # 8 adet dönüş değeri olmalı
-        return None, None, None, None, None, None, None, None
+        # 5 adet dönüş değeri olmalı
+        return None, None, None, None, None
 
 @st.cache_data
 def recommend_by_title(_similarity_df, _movie_metadata, title, top_n, _normalized_titles_dict):
@@ -485,8 +405,8 @@ def recommend_by_title(_similarity_df, _movie_metadata, title, top_n, _normalize
 # 3. GÖRSEL KARTLAR
 # -----------------------------------------------------------------------------
 
-def display_movie_cards(movies_data, col_count=4):
-    """Premium film kartları"""
+def display_movie_cards(movies_data, col_count=5):
+    """Premium film kartları - Standart 5 kolon"""
     cols = st.columns(col_count)
     
     for idx, movie in enumerate(movies_data):
@@ -519,12 +439,9 @@ def main():
         st.session_state.df_filtered = None
         st.session_state.movie_similarity_df = None
         st.session_state.normalized_titles_dict = None
-        st.session_state.year_best = None
-        st.session_state.genre_best = None
-        st.session_state.all_genres = None
-        st.session_state.movie_metadata = None # YENİ EKLENDİ
+        st.session_state.movie_metadata = None
 
-    # Arama state yönetimi (Sorunu çözen kısım)
+    # Arama state yönetimi
     if 'search_active' not in st.session_state:
         st.session_state.search_active = False
         st.session_state.last_search_term = ""
@@ -551,10 +468,7 @@ def main():
                     st.session_state.df_filtered = result[1]
                     st.session_state.movie_similarity_df = result[2]
                     st.session_state.normalized_titles_dict = result[3]
-                    st.session_state.year_best = result[4]
-                    st.session_state.genre_best = result[5]
-                    st.session_state.all_genres = result[6]
-                    st.session_state.movie_metadata = result[7] # Sözlük yüklendi
+                    st.session_state.movie_metadata = result[4]
                     st.session_state.data_loaded = True
                     st.rerun()
                 else:
@@ -567,10 +481,7 @@ def main():
     df_filtered = st.session_state.df_filtered
     movie_similarity_df = st.session_state.movie_similarity_df
     normalized_titles_dict = st.session_state.normalized_titles_dict
-    year_best = st.session_state.year_best
-    genre_best = st.session_state.genre_best
-    all_genres = st.session_state.all_genres
-    movie_metadata = st.session_state.movie_metadata # Sözlük alındı
+    movie_metadata = st.session_state.movie_metadata
 
     # Sidebar
     with st.sidebar:
@@ -597,51 +508,43 @@ def main():
         fig_mini.update_traces(line_color='#DAA520', fillcolor='rgba(218,165,32,0.3)')
         st.plotly_chart(fig_mini, width='stretch', key="sidebar_chart")
 
-    # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
+    # Tabs (SADELEŞTİRİLDİ: Sadece 2 Sekme)
+    tab1, tab2 = st.tabs([
         "🔍 Film Önerisi",
-        "🏆 Yılın En İyileri",
-        "🎭 Tür Keşfi",
         "📊 Veri Analizi"
     ])
 
-    # TAB 1: ÖNERİ (DÜZELTİLDİ)
+    # TAB 1: ÖNERİ (STANDART 5)
     with tab1:
         st.markdown("### 🎬 Hangi Filmi Beğendiniz?")
         
-        col_search, col_count = st.columns([3, 1])
-        with col_search:
-            movie_input = st.text_input("film_search", 
-                                      placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)",
-                                      label_visibility="collapsed", 
-                                      key="movie_search_input")
-        with col_count:
-            # Selectbox değiştiğinde state korunur
-            num_rec = st.selectbox("Öneri Sayısı", [4, 8, 12], index=0, 
-                                 label_visibility="collapsed",
-                                 format_func=lambda x: f"{x} Öneri", 
-                                 key="num_rec_select")
-
+        # Seçim kutusu kaldırıldı, sadece arama çubuğu ve buton
+        movie_input = st.text_input("film_search", 
+                                  placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)",
+                                  label_visibility="collapsed", 
+                                  key="movie_search_input")
+        
         # Buton mantığı state'e bağlandı
-        if st.button("🎯 Benzerlerini Keşfet", type="primary", key="search_button"):
+        if st.button("🎯 Benzerlerini Keşfet (5 Öneri)", type="primary", key="search_button"):
             st.session_state.search_active = True
             st.session_state.last_search_term = movie_input
 
-        # Arama aktifse sonuçları göster (Butona tekrar basılmasa bile)
+        # Arama aktifse sonuçları göster
         if st.session_state.search_active and st.session_state.last_search_term:
             with st.spinner('🎬 Benzer filmler aranıyor...'):
                 recommendations, match = recommend_by_title(
                     movie_similarity_df, 
-                    movie_metadata, # Hızlı sözlük gönderildi
-                    st.session_state.last_search_term, # State'teki terim kullanıldı
-                    num_rec, 
+                    movie_metadata, 
+                    st.session_state.last_search_term, 
+                    5,  # SABİT 5 ÖNERİ
                     normalized_titles_dict
                 )
             
             if recommendations:
-                st.success(f"✨ **{match}** filmine benzer önerilerimiz:")
+                st.success(f"✨ **{match}** filmine benzer 5 önerimiz:")
                 st.markdown("---")
-                display_movie_cards(recommendations, col_count=4)
+                # Kolon sayısı da 5'e göre ayarlandı
+                display_movie_cards(recommendations, col_count=5)
             else:
                 if match: # Alternatif öneriler
                     st.warning("🔍 Bu filmi bulamadık. Şunları mı demek istediniz?")
@@ -652,63 +555,8 @@ def main():
         elif st.session_state.search_active and not st.session_state.last_search_term:
              st.error("⚠️ Lütfen bir film adı girin.")
 
-
-    # TAB 2: YIL
+    # TAB 2: ANALİZ
     with tab2:
-        col_y1, col_y2 = st.columns([1, 3])
-        with col_y1:
-            years = sorted(df['YEAR'].unique(), reverse=True)
-            sel_year = st.selectbox("📅 Yıl Seçin", years, key="year_select")
-        
-        top_year = year_best.get(sel_year, pd.DataFrame())
-        
-        top_year_list = []
-        for _, row in top_year.iterrows():
-            top_year_list.append({
-                "Film": row['TITLE'],
-                "IMDb": row['IMDB_SCORE'],
-                "Yıl": sel_year,
-                "Türler": row['GENRES'].replace("|", ", ")
-            })
-            
-        st.markdown(f"### 🏆 {sel_year} Yılının En İyi Filmleri")
-        if top_year_list:
-            display_movie_cards(top_year_list, col_count=4)
-        else:
-            st.info("Bu yıl için yeterli veri bulunamadı.")
-
-    # TAB 3: TÜR
-    with tab3:
-        genre_options = ["🎭 Tür Seçin..."] + all_genres
-        sel_genre_idx = st.selectbox("Hangi türde film arıyorsunuz?",
-                                     range(len(genre_options)),
-                                     format_func=lambda x: genre_options[x],
-                                     key="genre_select")
-        
-        if sel_genre_idx == 0:
-            st.markdown("### 🎭 Tür Keşfi")
-            st.info("👆 Yukarıdan bir tür seçerek en iyi filmleri keşfedin!")
-        else:
-            sel_genre = genre_options[sel_genre_idx]
-            top_genre = genre_best.get(sel_genre, pd.DataFrame())
-            
-            top_genre_list = []
-            for _, row in top_genre.iterrows():
-                top_genre_list.append({
-                    "Film": row['TITLE'],
-                    "IMDb": row['IMDB_SCORE'],
-                    "Yıl": int(row['YEAR']),
-                    "Türler": sel_genre
-                })
-                
-            st.markdown(f"### 🎭 En İyi **{sel_genre}** Filmleri")
-            if top_genre_list:
-                display_movie_cards(top_genre_list, col_count=4)
-            else:
-                st.info("Bu tür için yeterli veri bulunamadı.")
-
-    # TAB 4: ANALİZ
-    with tab4:
         st.markdown("### 📊 Veri Seti İçgörüleri")
         
         col_a1, col_a2 = st.columns(2)
