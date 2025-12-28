@@ -6,7 +6,6 @@ import difflib
 import gdown
 import os
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import MinMaxScaler # Ölçeklendirme için eklendi
 
 # -----------------------------------------------------------------------------
 # 1. SAYFA YAPILANDIRMASI VE ULTRA CINEMATIC CSS
@@ -53,78 +52,89 @@ st.markdown("""
     /* HERO SECTION */
     .hero-container {
         text-align: center;
-        padding: 3rem 0 2rem 0;
-        border-bottom: 2px solid linear-gradient(90deg, transparent, #E50914, transparent);
+        padding: 2rem 0 1.5rem 0; /* Padding azaltıldı */
+        border-bottom: 1px solid linear-gradient(90deg, transparent, #E50914, transparent);
     }
     
     .main-title {
-        font-size: 5rem !important;
+        font-size: 4rem !important; /* Biraz küçüldü */
         background: linear-gradient(to bottom, #FFD700 0%, #FDB931 50%, #C6930A 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         filter: drop-shadow(0 0 20px rgba(253, 185, 49, 0.6));
-        margin-bottom: 10px;
+        margin-bottom: 5px;
         font-weight: 900 !important;
     }
     
     .subtitle {
         color: #f0f0f0 !important;
-        font-size: 1.2rem !important;
+        font-size: 1rem !important;
         font-weight: 600 !important;
         letter-spacing: 3px;
         text-transform: uppercase;
-        opacity: 1;
+        opacity: 0.9;
     }
 
-    /* SEÇİLEN FİLM PANELİ */
+    /* --- SEÇİLEN FİLM PANELİ (KOMPAKT VERSİYON) --- */
     .selected-movie-info {
-        background: rgba(10, 10, 10, 0.95);
-        border: 1px solid #444;
-        border-top: 5px solid #E50914;
-        padding: 30px;
-        border-radius: 15px;
-        margin-bottom: 30px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+        background: rgba(15, 15, 15, 0.95);
+        border: 1px solid #333;
+        border-top: 3px solid #E50914; /* Çizgi inceldi */
+        padding: 15px 20px; /* Boşluklar ciddi oranda azaltıldı */
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
         text-align: center;
         backdrop-filter: blur(10px);
     }
     
     .info-label {
         color: #E50914 !important;
-        font-weight: 800;
-        font-size: 0.9rem;
-        letter-spacing: 3px;
-        margin-bottom: 8px;
+        font-weight: 700;
+        font-size: 0.75rem; /* Küçüldü */
+        letter-spacing: 2px;
+        margin-bottom: 2px;
     }
     
     .info-title {
         font-family: 'Bebas Neue', cursive !important;
-        font-size: 3rem !important;
+        font-size: 2.2rem !important; /* 3rem'den 2.2rem'e düştü */
         color: #ffffff !important;
-        margin-bottom: 15px;
-        text-shadow: 3px 3px 6px #000;
+        margin-bottom: 8px;
+        text-shadow: 2px 2px 5px #000;
         letter-spacing: 1px;
+        line-height: 1;
     }
     
     .info-meta {
         display: flex;
-        gap: 25px;
+        gap: 15px;
         justify-content: center;
         align-items: center;
-        font-size: 1.1rem;
+        font-size: 0.9rem; /* Küçüldü */
         color: #ffffff !important;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
         font-weight: 600;
     }
     
     .highlight-box {
-        background: rgba(255, 215, 0, 0.15);
-        border: 1px solid #FFD700;
+        background: rgba(255, 215, 0, 0.1);
+        border: 1px solid rgba(255, 215, 0, 0.5);
         color: #FFD700 !important;
-        padding: 6px 18px;
-        border-radius: 30px;
+        padding: 2px 12px; /* Padding küçüldü */
+        border-radius: 20px;
+        font-size: 0.85rem;
         font-weight: 700;
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    }
+
+    .ai-description {
+        color: #cccccc !important;
+        font-size: 0.9rem !important; /* Küçüldü */
+        max-width: 750px;
+        margin: 0 auto;
+        line-height: 1.4;
+        font-weight: 400 !important;
+        font-style: italic;
     }
 
     /* KART TASARIMI */
@@ -271,7 +281,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 2. VERİ MOTORU (PUAN KALİBRASYONU EKLENDİ)
+# 2. VERİ MOTORU
 # -----------------------------------------------------------------------------
 
 @st.cache_resource(ttl=3600)
@@ -329,31 +339,20 @@ def find_candidates(query, titles_dict):
 
 def get_recs(sim_df, meta, title):
     if title not in sim_df.columns: return []
-    
-    # Ham skorları al
     raw_scores = sim_df[title].drop(title).nlargest(5)
     
-    # --- SKOR KALİBRASYONU (YENİ) ---
-    # Ham skorları (örn: 0.15 - 0.05) kullanıcı dostu yüzdelere (örn: %98 - %75) dönüştürüyoruz.
-    # Bu sadece görsel bir düzeltmedir, sıralamayı değiştirmez.
+    min_display = 0.75
+    max_display = 0.98
     
-    min_display = 0.75  # En kötü öneri %75 gözüksün
-    max_display = 0.98  # En iyi öneri %98 gözüksün
-    
-    # Eğer skorlar varsa normalize et
     if not raw_scores.empty:
         min_raw = raw_scores.min()
         max_raw = raw_scores.max()
-        
-        # Eğer tüm skorlar aynıysa veya tek sonuç varsa
         if max_raw == min_raw:
-            calibrated_scores = {k: 0.95 for k, v in raw_scores.items()} # Hepsine %95 ver
+            calibrated_scores = {k: 0.95 for k, v in raw_scores.items()}
         else:
             calibrated_scores = {}
             for m, s in raw_scores.items():
-                # Min-Max Normalizasyon formülü
                 normalized = (s - min_raw) / (max_raw - min_raw)
-                # İstenilen aralığa (75-98) yayma
                 final_score = normalized * (max_display - min_display) + min_display
                 calibrated_scores[m] = final_score
     else:
@@ -370,7 +369,6 @@ def display_cards(movies):
         with cols[i]:
             rating_val = m.get('RATING', 0)
             
-            # Kart Yapısı
             st.markdown(f"""
             <div class="movie-card">
                 <div class="match-badge">%{int(m['Score']*100)} UYUM</div>
@@ -386,7 +384,6 @@ def display_cards(movies):
             </div>
             """, unsafe_allow_html=True)
             
-            # Aksiyon Butonu
             if st.button(f"İNCELE & BENZERLERİ", key=f"btn_{i}", use_container_width=True):
                 st.session_state.selected_movie_final = m['Title']
                 st.session_state.candidates = []
@@ -453,6 +450,7 @@ def main():
         info = st.session_state.meta.get(sel_movie, {})
         current_rating = info.get('RATING', 0)
         
+        # KOMPAKT SEÇİLEN FİLM PANELİ
         st.markdown(f"""
         <div class="selected-movie-info">
             <div class="info-label">ŞU AN İNCELENEN YAPIM</div>
@@ -462,7 +460,7 @@ def main():
                 <span>{info.get('GENRES', '').replace('|', ' • ')}</span>
                 <span class="highlight-box">IMDb: {current_rating:.1f}</span>
             </div>
-            <div style="color:#eeeeee; font-size:1.1rem; max-width:800px; margin:0 auto; line-height:1.6; font-weight:500;">
+            <div class="ai-description">
                 Yapay zeka algoritmamız, <b style="color:#FFD700;">{sel_movie}</b> filminin genetik kodlarını analiz etti. 
                 Senaryo yapısı, tür özellikleri ve izleyici davranışlarına göre sizin için en iyi 5 alternatifi belirledi.
             </div>
