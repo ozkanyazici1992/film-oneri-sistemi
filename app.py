@@ -8,7 +8,7 @@ import os
 from sklearn.metrics.pairwise import cosine_similarity
 
 # -----------------------------------------------------------------------------
-# 1. SAYFA YAPILANDIRMASI VE ULTRA CINEMATIC CSS
+# 1. SAYFA YAPILANDIRMASI VE YÜKSEK KONTRASTLI SİNEMATİK CSS
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="MovieMind AI",
@@ -19,12 +19,12 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap');
 
-    /* --- ARKA PLAN VE GENEL --- */
+    /* --- ARKA PLAN --- */
     [data-testid="stAppViewContainer"] {
         background-color: #000000;
-        background-image: radial-gradient(circle at 50% 0%, #2b0c0d 0%, #000000 70%);
+        background-image: radial-gradient(circle at 50% 0%, #1a0505 0%, #000000 85%);
         background-attachment: fixed;
     }
     
@@ -32,19 +32,22 @@ st.markdown("""
         background-color: transparent !important;
     }
 
-    /* YAZI TİPLERİ */
+    /* --- TEMEL YAZI AYARLARI (GÜÇLENDİRİLDİ) --- */
     .stApp, p, span, div, label {
-        color: #e0e0e0 !important;
+        color: #ffffff !important; /* TAM BEYAZ */
         font-family: 'Montserrat', sans-serif !important;
         font-size: 0.95rem !important;
+        font-weight: 500 !important; /* DAHA KALIN */
+        line-height: 1.5 !important;
     }
     
     /* BAŞLIKLAR */
     h1, h2, h3, h4 {
         font-family: 'Bebas Neue', cursive !important;
         color: #FFD700 !important;
-        letter-spacing: 1.5px;
+        letter-spacing: 2px;
         text-transform: uppercase;
+        text-shadow: 2px 2px 4px #000000;
     }
 
     /* HERO SECTION */
@@ -55,151 +58,143 @@ st.markdown("""
     }
     
     .main-title {
-        font-size: 4.5rem !important;
-        background: linear-gradient(to bottom, #FFD700 0%, #FDB931 50%, #9f7928 100%);
+        font-size: 5rem !important;
+        background: linear-gradient(to bottom, #FFD700 0%, #FDB931 50%, #C6930A 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 0 15px rgba(253, 185, 49, 0.4));
+        filter: drop-shadow(0 0 20px rgba(253, 185, 49, 0.6));
         margin-bottom: 10px;
+        font-weight: 900 !important; /* EKSTRA KALIN */
     }
     
     .subtitle {
-        color: #ffffff !important;
-        font-size: 1.1rem !important;
-        font-weight: 300 !important;
+        color: #f0f0f0 !important;
+        font-size: 1.2rem !important;
+        font-weight: 600 !important; /* DAHA BELİRGİN */
         letter-spacing: 3px;
         text-transform: uppercase;
-        opacity: 0.9;
+        opacity: 1; /* TAM GÖRÜNÜR */
     }
 
-    /* SEÇİLEN FİLM PANELİ */
+    /* SEÇİLEN FİLM PANELİ (DAHA KOYU ARKA PLAN) */
     .selected-movie-info {
-        background: rgba(20, 20, 20, 0.8);
-        border: 1px solid #333;
-        border-top: 4px solid #E50914;
-        padding: 25px;
-        border-radius: 12px;
+        background: rgba(10, 10, 10, 0.95); /* DAHA OPAK */
+        border: 1px solid #444;
+        border-top: 5px solid #E50914;
+        padding: 30px;
+        border-radius: 15px;
         margin-bottom: 30px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.9);
         text-align: center;
         backdrop-filter: blur(10px);
-        animation: fadeIn 0.5s ease-in;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
     }
     
     .info-label {
         color: #E50914 !important;
-        font-weight: 700;
-        font-size: 0.8rem;
-        letter-spacing: 2px;
-        margin-bottom: 5px;
-        text-transform: uppercase;
+        font-weight: 800;
+        font-size: 0.9rem;
+        letter-spacing: 3px;
+        margin-bottom: 8px;
     }
     
     .info-title {
         font-family: 'Bebas Neue', cursive !important;
-        font-size: 2.2rem !important;
+        font-size: 3rem !important;
         color: #ffffff !important;
-        margin-bottom: 10px;
-        line-height: 1.1;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        margin-bottom: 15px;
+        text-shadow: 3px 3px 6px #000;
+        letter-spacing: 1px;
     }
     
     .info-meta {
         display: flex;
-        gap: 20px;
+        gap: 25px;
         justify-content: center;
         align-items: center;
-        font-size: 1rem;
-        color: #cccccc !important;
-        margin-bottom: 15px;
+        font-size: 1.1rem;
+        color: #ffffff !important;
+        margin-bottom: 20px;
+        font-weight: 600;
     }
     
     .highlight-box {
-        background: rgba(255, 215, 0, 0.1);
-        border: 1px solid rgba(255, 215, 0, 0.3);
+        background: rgba(255, 215, 0, 0.15);
+        border: 1px solid #FFD700;
         color: #FFD700 !important;
-        padding: 5px 15px;
-        border-radius: 20px;
-        font-weight: 600;
+        padding: 6px 18px;
+        border-radius: 30px;
+        font-weight: 700;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
     }
 
-    /* ÖNERİ KARTLARI */
+    /* KART TASARIMI (DAHA NET) */
     div.movie-card {
-        background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
-        border: 1px solid #333;
-        border-radius: 8px 8px 0 0;
-        padding: 15px; 
-        height: 190px;
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        background: #111111; /* KOYU VE NET */
+        border: 1px solid #444;
+        border-radius: 10px 10px 0 0;
+        padding: 16px; 
+        height: 200px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         position: relative;
-        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
 
     div.movie-card:hover {
         transform: translateY(-5px);
         border-color: #E50914;
-        box-shadow: 0 10px 30px rgba(229, 9, 20, 0.2);
-    }
-    
-    div.movie-card::after {
-        content: "";
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.8) 100%);
-        pointer-events: none;
+        background: #161616;
+        box-shadow: 0 10px 30px rgba(229, 9, 20, 0.3);
     }
 
     .card-icon {
-        font-size: 1.8rem;
+        font-size: 2rem;
         text-align: center;
-        margin-bottom: 8px;
-        text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        margin-bottom: 5px;
+        filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
     }
 
     .card-title {
         color: #ffffff !important;
         font-family: 'Montserrat', sans-serif !important;
-        font-size: 0.9rem !important;
-        font-weight: 700 !important;
-        margin-bottom: 4px;
-        height: 2.6em;
+        font-size: 1rem !important;
+        font-weight: 800 !important; /* KALIN */
+        margin-bottom: 5px;
+        height: 2.8em;
         overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         line-height: 1.3;
         text-transform: capitalize;
+        text-shadow: 1px 1px 2px #000;
     }
 
     .card-meta {
-        font-size: 0.8rem !important;
-        color: #999 !important;
+        font-size: 0.9rem !important;
+        color: #dddddd !important; /* AÇIK GRİ */
         display: flex;
         justify-content: space-between;
         align-items: center;
+        font-weight: 600;
     }
 
     .star-rating {
         color: #FFD700 !important;
-        font-weight: 800;
+        font-weight: 900;
+        text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
     }
 
     .card-genre {
-        font-size: 0.7rem !important;
-        color: #bbb !important;
+        font-size: 0.75rem !important;
+        color: #cccccc !important;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        margin-top: 4px;
         font-style: normal;
+        font-weight: 500;
+        margin-top: 5px;
     }
 
     .match-badge {
@@ -208,65 +203,70 @@ st.markdown("""
         right: 10px;
         background: #E50914;
         color: white !important;
-        font-size: 0.65rem;
-        padding: 2px 6px;
+        font-size: 0.75rem;
+        padding: 4px 8px;
         border-radius: 4px;
-        font-weight: bold;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        font-weight: 800;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.8);
     }
 
-    /* BUTONLAR */
+    /* BUTONLAR (PARLAK) */
     div[data-testid="column"] button {
-        background: #1f1f1f !important;
-        border: 1px solid #333 !important;
-        color: #E50914 !important;
-        border-radius: 0 0 8px 8px !important;
-        font-size: 0.8rem !important;
-        font-weight: 700 !important;
-        padding: 6px 0px !important;
+        background: #1a1a1a !important;
+        border: 1px solid #555 !important;
+        color: #ffffff !important;
+        border-radius: 0 0 10px 10px !important;
+        font-size: 0.85rem !important;
+        font-weight: 800 !important;
+        padding: 10px 0px !important;
         margin-top: -8px !important;
         transition: 0.2s !important;
         width: 100%;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 1px;
     }
     
     div[data-testid="column"] button:hover {
         background: #E50914 !important;
         color: #ffffff !important;
         border-color: #E50914 !important;
-        box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+        box-shadow: 0 0 15px rgba(229, 9, 20, 0.6);
     }
 
-    /* INPUT ALANI */
+    /* INPUT ALANI (YÜKSEK KONTRAST) */
     .stTextInput input {
-        background-color: #1a1a1a !important;
-        border: 2px solid #333 !important;
+        background-color: #222 !important; /* Biraz daha açık */
+        border: 2px solid #555 !important;
         color: #ffffff !important;
         border-radius: 50px !important;
-        padding: 12px 20px !important;
-        font-size: 1rem !important;
-        font-weight: 500 !important;
+        padding: 15px 25px !important;
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
     }
     
     .stTextInput input:focus {
-        border-color: #E50914 !important;
-        box-shadow: 0 0 15px rgba(229, 9, 20, 0.3) !important;
+        border-color: #FFD700 !important; /* Altın rengi focus */
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4) !important;
+        background-color: #000 !important;
+    }
+    
+    /* Placeholder rengi */
+    .stTextInput input::placeholder {
+        color: #888 !important;
+        font-weight: 500 !important;
     }
 
     /* ADAY BUTONLARI */
     .element-container button {
-        background-color: transparent !important;
-        border: 1px solid #444 !important;
-        color: #ccc !important;
-        height: auto !important;
-        min-height: 45px;
-        white-space: normal !important;
-        word-wrap: break-word !important;
+        background-color: rgba(255,255,255,0.05) !important;
+        border: 1px solid #666 !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
     }
     .element-container button:hover {
         border-color: #FFD700 !important;
         color: #FFD700 !important;
+        background-color: rgba(255, 215, 0, 0.1) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -350,7 +350,7 @@ def display_cards(movies):
                 <div class="card-icon">🎬</div>
                 <div class="card-title" title="{m['Title']}">{m['Title']}</div>
                 <div class="card-meta">
-                    <span>{int(m['YEAR']) if 'YEAR' in m else '-'}</span>
+                    <span style="color:#aaa;">{int(m['YEAR']) if 'YEAR' in m else '-'}</span>
                     <span class="star-rating">★ {rating_val:.1f}</span>
                 </div>
                 <div class="card-genre">
@@ -399,10 +399,9 @@ def main():
 
     if not st.session_state.data_loaded: st.stop()
 
-    # ARAMA MOTORU - GÜNCELLENEN YAZI
+    # ARAMA MOTORU
     c1, c2, c3 = st.columns([1, 6, 1])
     with c2:
-        # Placeholder metni "unutulmaz film" vurgusuyla değiştirildi
         query = st.text_input("ara", placeholder="Etkisinden çıkamadığınız o filmi yazın... (Örn: Inception, The Prestige)", label_visibility="collapsed")
         
         if query and ('last_q' not in st.session_state or st.session_state.last_q != query):
@@ -412,7 +411,7 @@ def main():
 
     # ADAYLAR
     if st.session_state.candidates and not st.session_state.selected_movie_final:
-        st.markdown("<div style='text-align:center; margin-top:20px; color:#999; font-size:0.9rem;'>BUNU MU DEMEK İSTEDİNİZ?</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; margin-top:20px; color:#ffffff; font-size:1rem; font-weight:600;'>BUNU MU DEMEK İSTEDİNİZ?</div>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         cols = st.columns(len(st.session_state.candidates))
         for i, cand in enumerate(st.session_state.candidates):
@@ -437,8 +436,8 @@ def main():
                 <span>{info.get('GENRES', '').replace('|', ' • ')}</span>
                 <span class="highlight-box">IMDb: {current_rating:.1f}</span>
             </div>
-            <div style="color:#aaa; font-size:0.95rem; max-width:700px; margin:0 auto; line-height:1.5;">
-                Yapay zeka algoritmamız, <b>{sel_movie}</b> filminin genetik kodlarını analiz etti. 
+            <div style="color:#eeeeee; font-size:1.1rem; max-width:800px; margin:0 auto; line-height:1.6; font-weight:500;">
+                Yapay zeka algoritmamız, <b style="color:#FFD700;">{sel_movie}</b> filminin genetik kodlarını analiz etti. 
                 Senaryo yapısı, tür özellikleri ve izleyici davranışlarına göre sizin için en iyi 5 alternatifi belirledi.
             </div>
         </div>
