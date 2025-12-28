@@ -214,6 +214,71 @@ st.markdown("""
         background: linear-gradient(135deg, #FFD700 0%, #DAA520 100%) !important;
     }
 
+    /* SELECTBOX - PREMIUM */
+    .stSelectbox > div > div {
+        background: rgba(40,40,60,0.95) !important;
+        border: 2px solid rgba(218,165,32,0.4) !important;
+        border-radius: 20px;
+        padding: 10px 16px;
+        transition: all 0.3s;
+    }
+    
+    .stSelectbox > div > div:hover {
+        border-color: #DAA520 !important;
+        background: rgba(50,50,70,1) !important;
+    }
+    
+    .stSelectbox > div > div > div {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+    
+    /* Seçili değer */
+    .stSelectbox [data-baseweb="select"] > div {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+    
+    .stSelectbox label {
+        color: #DAA520 !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        margin-bottom: 10px;
+    }
+    
+    /* Dropdown menü kutusu */
+    [data-baseweb="popover"] {
+        background: rgba(30,30,50,0.98) !important;
+    }
+    
+    /* Dropdown menü içeriği */
+    [data-baseweb="menu"] {
+        background: rgba(30,30,50,0.98) !important;
+    }
+    
+    [data-baseweb="menu"] > ul {
+        background: rgba(30,30,50,0.98) !important;
+    }
+    
+    /* Seçenekler */
+    [role="option"] {
+        background: rgba(30,30,50,0.98) !important;
+        color: #FFFFFF !important;
+        font-weight: 500 !important;
+        padding: 12px 16px !important;
+    }
+    
+    [role="option"]:hover {
+        background: rgba(218,165,32,0.4) !important;
+        color: #FFD700 !important;
+    }
+    
+    [aria-selected="true"][role="option"] {
+        background: rgba(218,165,32,0.3) !important;
+        color: #FFD700 !important;
+    }
+
     /* TABS - SİNEMATİK */
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
@@ -361,34 +426,34 @@ def prepare_data(filepath, vote_threshold=1000, min_votes=2500):
         
         normalized_titles_dict = {normalize_title(t): t for t in movie_similarity_df.columns}
         
-        # NOT: Yıl ve Tür bazlı "Best of" hesaplamaları kaldırıldı (Hız artışı için)
-        
         return df, df_filtered, movie_similarity_df, normalized_titles_dict, movie_metadata
         
     except Exception as e:
         st.error(f"❌ Veri işleme hatası: {str(e)}")
-        # 5 adet dönüş değeri olmalı
         return None, None, None, None, None
 
+def find_movie_candidates(query, _normalized_titles_dict, top_n=5):
+    """Kullanıcı girdisine en yakın 5 filmi bulur ve listeler."""
+    normalized_input = normalize_title(query)
+    # Sadece fuzzy match yap, veriyi çekme
+    close_matches = difflib.get_close_matches(normalized_input, _normalized_titles_dict.keys(), n=top_n, cutoff=0.3)
+    # Normalize edilmiş key'lerden gerçek film isimlerini bul
+    real_titles = [_normalized_titles_dict[m] for m in close_matches]
+    return real_titles
+
 @st.cache_data
-def recommend_by_title(_similarity_df, _movie_metadata, title, top_n, _normalized_titles_dict):
-    """
-    Optimize edilmiş öneri fonksiyonu. DataFrame yerine Sözlük (Dict) kullanır.
-    """
-    normalized_input = normalize_title(title)
-    close_matches = difflib.get_close_matches(normalized_input, _normalized_titles_dict.keys(), n=1, cutoff=0.6)
+def get_recommendations_for_selected(_similarity_df, _movie_metadata, selected_movie, top_n):
+    """Kullanıcının seçtiği KESİN film ismine göre öneri getirir."""
     
-    if not close_matches:
-        alternatives = [_normalized_titles_dict[t] for t in difflib.get_close_matches(normalized_input, _normalized_titles_dict.keys(), n=3, cutoff=0.4)]
-        return None, alternatives
-    
-    match = _normalized_titles_dict[close_matches[0]]
-    scores = _similarity_df[match].drop(labels=[match], errors="ignore")
+    # Seçilen film veritabanında var mı? (Garantilemek için)
+    if selected_movie not in _similarity_df.columns:
+        return None
+        
+    scores = _similarity_df[selected_movie].drop(labels=[selected_movie], errors="ignore")
     recommendations = scores.nlargest(top_n)
     
     rec_data = []
     for movie, similarity_score in recommendations.items():
-        # DataFrame filtreleme yerine doğrudan sözlükten çekiyoruz (Çok daha hızlı)
         if movie in _movie_metadata:
             meta = _movie_metadata[movie]
             rec_data.append({
@@ -399,7 +464,7 @@ def recommend_by_title(_similarity_df, _movie_metadata, title, top_n, _normalize
                 "Türler": meta['GENRES'].replace("|", ", ")
             })
     
-    return rec_data, match
+    return rec_data
 
 # -----------------------------------------------------------------------------
 # 3. GÖRSEL KARTLAR
@@ -441,10 +506,15 @@ def main():
         st.session_state.normalized_titles_dict = None
         st.session_state.movie_metadata = None
 
-    # Arama state yönetimi
-    if 'search_active' not in st.session_state:
-        st.session_state.search_active = False
-        st.session_state.last_search_term = ""
+    # Arama state yönetimi (YENİLENDİ)
+    if 'search_candidates' not in st.session_state:
+        st.session_state.search_candidates = [] # Bulunan potansiyel filmler
+    
+    if 'search_term' not in st.session_state:
+        st.session_state.search_term = ""
+
+    if 'results_ready' not in st.session_state:
+        st.session_state.results_ready = False
 
     # Hero Section
     st.markdown("""
@@ -508,52 +578,70 @@ def main():
         fig_mini.update_traces(line_color='#DAA520', fillcolor='rgba(218,165,32,0.3)')
         st.plotly_chart(fig_mini, width='stretch', key="sidebar_chart")
 
-    # Tabs (SADELEŞTİRİLDİ: Sadece 2 Sekme)
+    # Tabs
     tab1, tab2 = st.tabs([
         "🔍 Film Önerisi",
         "📊 Veri Analizi"
     ])
 
-    # TAB 1: ÖNERİ (STANDART 5)
+    # TAB 1: ÖNERİ (SADELEŞTİRİLMİŞ AKIŞ)
     with tab1:
-        st.markdown("### 🎬 Hangi Filmi Beğendiniz?")
+        st.markdown("### 🎬 Film Arayın")
         
-        # Seçim kutusu kaldırıldı, sadece arama çubuğu ve buton
-        movie_input = st.text_input("film_search", 
-                                  placeholder="🔍 Film adı yazın... (örn: Inception, Matrix)",
-                                  label_visibility="collapsed", 
-                                  key="movie_search_input")
+        # 1. Adım: Arama Çubuğu
+        col_search_inp, col_search_btn = st.columns([4, 1])
         
-        # Buton mantığı state'e bağlandı
-        if st.button("🎯 Benzerlerini Keşfet (5 Öneri)", type="primary", key="search_button"):
-            st.session_state.search_active = True
-            st.session_state.last_search_term = movie_input
+        with col_search_inp:
+            query = st.text_input("film_search", 
+                                placeholder="🔍 Film adı yazın... (örn: lor of the ring, batmn)",
+                                label_visibility="collapsed", 
+                                key="query_input")
+        
+        with col_search_btn:
+            search_clicked = st.button("🔎 Ara", type="primary")
 
-        # Arama aktifse sonuçları göster
-        if st.session_state.search_active and st.session_state.last_search_term:
-            with st.spinner('🎬 Benzer filmler aranıyor...'):
-                recommendations, match = recommend_by_title(
-                    movie_similarity_df, 
-                    movie_metadata, 
-                    st.session_state.last_search_term, 
-                    5,  # SABİT 5 ÖNERİ
-                    normalized_titles_dict
-                )
+        # Butona basılınca adayları bul
+        if search_clicked and query:
+            candidates = find_movie_candidates(query, normalized_titles_dict, top_n=5)
+            st.session_state.search_candidates = candidates
+            st.session_state.search_term = query
+            st.session_state.results_ready = False # Yeni arama yapıldı, sonuçlar sıfırlandı
+
+        # 2. Adım: Aday Listesi ve Seçim (Eğer aday varsa göster)
+        if st.session_state.search_candidates:
+            st.markdown("---")
+            st.info("🤔 **Bunu mu demek istediniz?** Lütfen aşağıdaki listeden doğru filmi seçin:")
             
-            if recommendations:
-                st.success(f"✨ **{match}** filmine benzer 5 önerimiz:")
-                st.markdown("---")
-                # Kolon sayısı da 5'e göre ayarlandı
-                display_movie_cards(recommendations, col_count=5)
-            else:
-                if match: # Alternatif öneriler
-                    st.warning("🔍 Bu filmi bulamadık. Şunları mı demek istediniz?")
-                    for alt in match:
-                        st.info(f"• {alt}")
-                else:
-                    st.error("⚠️ Lütfen geçerli bir film adı girin.")
-        elif st.session_state.search_active and not st.session_state.last_search_term:
-             st.error("⚠️ Lütfen bir film adı girin.")
+            selected_candidate = st.selectbox(
+                "Bulunan Filmler", 
+                st.session_state.search_candidates,
+                label_visibility="collapsed"
+            )
+            
+            # 3. Adım: Önerileri Getir Butonu
+            if st.button(f"🎯 '{selected_candidate}' için Önerileri Getir", type="primary"):
+                with st.spinner('🎬 Analiz yapılıyor...'):
+                    recommendations = get_recommendations_for_selected(
+                        movie_similarity_df,
+                        movie_metadata,
+                        selected_candidate,
+                        5 # Sabit 5 öneri
+                    )
+                    st.session_state.recommendations = recommendations
+                    st.session_state.results_ready = True
+                    st.session_state.selected_movie_name = selected_candidate
+
+        # 4. Adım: Sonuç Ekranı
+        if st.session_state.get('results_ready') and st.session_state.get('recommendations'):
+            st.markdown("---")
+            st.success(f"✨ **{st.session_state.selected_movie_name}** filmine benzer 5 önerimiz:")
+            display_movie_cards(st.session_state.recommendations, col_count=5)
+            
+        elif st.session_state.get('results_ready') and not st.session_state.get('recommendations'):
+             st.error("⚠️ Bir hata oluştu veya veri bulunamadı.")
+             
+        elif search_clicked and not st.session_state.search_candidates:
+            st.warning("😔 Aradığınız isme yakın bir film bulamadık. Lütfen tekrar deneyin.")
 
     # TAB 2: ANALİZ
     with tab2:
